@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NetSuite Discovery: Work Order / Assembly Build</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #f0f2f5; color: #1a1a2e; line-height: 1.6; }
+.header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); color: white; padding: 40px 20px; text-align: center; }
+.header h1 { font-size: 28px; margin-bottom: 8px; }
+.header p { opacity: 0.85; font-size: 15px; max-width: 600px; margin: 0 auto; }
+.container { max-width: 900px; margin: 30px auto; padding: 0 20px 60px; }
+.meta-section { background: white; border-radius: 12px; padding: 30px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.meta-section h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #0f3460; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #e8ecf1; }
+.section { background: white; border-radius: 12px; padding: 30px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.section h2 { font-size: 20px; color: #0f3460; margin-bottom: 6px; }
+.section .section-desc { color: #666; font-size: 14px; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 2px solid #e8ecf1; }
+.field { margin-bottom: 20px; }
+.field label { display: block; font-weight: 600; font-size: 14px; margin-bottom: 6px; color: #333; }
+.field .hint { font-size: 12px; color: #888; margin-bottom: 6px; font-style: italic; }
+.field input[type="text"], .field input[type="number"], .field input[type="date"], .field select, .field textarea {
+  width: 100%; padding: 10px 14px; border: 1.5px solid #d1d5db; border-radius: 8px; font-size: 14px; font-family: inherit; transition: border-color 0.2s; background: #fafbfc;
+}
+.field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: #0f3460; background: white; box-shadow: 0 0 0 3px rgba(15,52,96,0.08); }
+.field textarea { min-height: 80px; resize: vertical; }
+.radio-group, .checkbox-group { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 6px; }
+.radio-group label, .checkbox-group label { font-weight: 400; display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 6px 14px; border: 1.5px solid #d1d5db; border-radius: 8px; font-size: 14px; transition: all 0.2s; background: #fafbfc; }
+.radio-group label:hover, .checkbox-group label:hover { border-color: #0f3460; background: #f0f4ff; }
+.radio-group input:checked + span, .checkbox-group input:checked + span { color: #0f3460; font-weight: 600; }
+.radio-group label:has(input:checked), .checkbox-group label:has(input:checked) { border-color: #0f3460; background: #eef2ff; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 600px) { .grid-2 { grid-template-columns: 1fr; } }
+.btn-bar { position: sticky; bottom: 0; background: white; padding: 16px 20px; border-top: 1px solid #e5e7eb; display: flex; justify-content: center; gap: 12px; z-index: 10; }
+.btn { padding: 12px 32px; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+.btn-primary { background: #0f3460; color: white; }
+.btn-primary:hover { background: #1a4a7a; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(15,52,96,0.3); }
+.btn-secondary { background: #e8ecf1; color: #0f3460; }
+.btn-drive { background: #1a73e8; color: white; display: flex; align-items: center; gap: 8px; }
+.btn-drive:hover { background: #1557b0; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(26,115,232,0.3); }
+.btn-drive:disabled { background: #93c5fd; cursor: wait; }
+.drive-icon { font-size: 18px; }
+.btn-secondary:hover { background: #d1d8e4; }
+.required::after { content: ' *'; color: #e53e3e; }
+.progress-bar { background: #e8ecf1; height: 6px; border-radius: 3px; margin: 20px 0; overflow: hidden; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, #0f3460, #4a90d9); border-radius: 3px; transition: width 0.5s ease; }
+.progress-text { text-align: center; font-size: 13px; color: #666; margin-bottom: 10px; }
+.toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: #10b981; color: white; padding: 12px 24px; border-radius: 8px; font-weight: 600; z-index: 100; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+</style>
+<script src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
+<script src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
+<script src="drive-upload.js"></script>
+</head>
+<body>
+
+<div class="header">
+  <a href="index.html" style="color:rgba(255,255,255,0.7);text-decoration:none;font-size:13px;display:inline-block;margin-bottom:10px;">&larr; Back to all forms</a>
+  <h1>Work Order / Assembly Build</h1>
+  <p>NetSuite ERP Discovery Questionnaire — Assembly Builds, Work Orders, BOM Management, and Basic Production</p>
+</div>
+
+<div class="container">
+
+<div class="meta-section">
+  <h2>Session Information</h2>
+  <div class="grid-2">
+    <div class="field"><label class="required">Client / Company Name</label><input type="text" data-export="Client Name"></div>
+    <div class="field"><label class="required">Completed By</label><input type="text" data-export="Completed By"></div>
+    <div class="field"><label>Date</label><input type="date" data-export="Date"></div>
+    <div class="field"><label>Session Attendees</label><input type="text" data-export="Attendees" placeholder="Names and roles"></div>
+  </div>
+</div>
+
+<div class="progress-text">Completion: <span id="progressPct">0%</span></div>
+<div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+
+<!-- SECTION 1: Production Overview -->
+<div class="section">
+  <h2>1. Production Overview</h2>
+  <p class="section-desc">Understanding your manufacturing environment, production models, and finished goods portfolio.</p>
+
+  <div class="field">
+    <label class="required">What types of manufacturing does your company perform?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Discrete" data-export="Manufacturing Types"><span>Discrete (assembled products)</span></label>
+      <label><input type="checkbox" value="Process" data-export="Manufacturing Types"><span>Process (blending, mixing)</span></label>
+      <label><input type="checkbox" value="Mixed" data-export="Manufacturing Types"><span>Mixed mode</span></label>
+      <label><input type="checkbox" value="Job Shop" data-export="Manufacturing Types"><span>Job shop / Custom</span></label>
+      <label><input type="checkbox" value="Repetitive" data-export="Manufacturing Types"><span>Repetitive</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label class="required">What is your annual production volume (units)?</label>
+    <input type="text" data-export="Annual Production Volume" placeholder="e.g., 50,000 units/year">
+  </div>
+
+  <div class="field">
+    <label class="required">How many finished goods SKUs do you manufacture?</label>
+    <input type="number" data-export="Finished Goods Count" placeholder="e.g., 250">
+  </div>
+
+  <div class="field">
+    <label class="required">What is your primary production strategy?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="prod_strategy" value="Make-to-Stock" data-export="Production Strategy"><span>Make-to-Stock (MTS)</span></label>
+      <label><input type="radio" name="prod_strategy" value="Make-to-Order" data-export="Production Strategy"><span>Make-to-Order (MTO)</span></label>
+      <label><input type="radio" name="prod_strategy" value="Assemble-to-Order" data-export="Production Strategy"><span>Assemble-to-Order (ATO)</span></label>
+      <label><input type="radio" name="prod_strategy" value="Engineer-to-Order" data-export="Production Strategy"><span>Engineer-to-Order (ETO)</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label class="required">How many manufacturing locations / plants do you operate?</label>
+    <input type="number" data-export="Manufacturing Locations" placeholder="e.g., 3">
+  </div>
+
+  <div class="field">
+    <label>List manufacturing locations (facility name, location, type)</label>
+    <textarea data-export="Location Details" placeholder="e.g., Plant A - Austin TX (Primary Assembly), Plant B - Dallas TX (Subassemblies), Warehouse C - Denver CO (Final Pack)"></textarea>
+  </div>
+
+  <div class="field">
+    <label class="required">What percentage of production is outsourced / contract manufacturing?</label>
+    <input type="text" data-export="Outsourced Production %" placeholder="e.g., 15%">
+  </div>
+
+  <div class="field">
+    <label>Peak vs. baseline production capacity variance</label>
+    <input type="text" data-export="Capacity Variance" placeholder="e.g., Peak at 150% of baseline capacity">
+  </div>
+</div>
+
+<!-- SECTION 2: Bill of Materials (BOM) -->
+<div class="section">
+  <h2>2. Bill of Materials (BOM)</h2>
+  <p class="section-desc">BOM structure, versioning, and engineering change management.</p>
+
+  <div class="field">
+    <label class="required">How many active BOMs do you maintain?</label>
+    <input type="number" data-export="Total BOMs" placeholder="e.g., 500">
+  </div>
+
+  <div class="field">
+    <label class="required">What is the typical BOM structure?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="bom_structure" value="Single-level" data-export="BOM Structure"><span>Single-level (flat)</span></label>
+      <label><input type="radio" name="bom_structure" value="Multi-level" data-export="BOM Structure"><span>Multi-level (hierarchical)</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label class="required">What is the average number of components per BOM?</label>
+    <input type="text" data-export="Avg Components per BOM" placeholder="e.g., 25 components">
+  </div>
+
+  <div class="field">
+    <label>Do you use phantom assemblies (non-stocked subassemblies)?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="phantom" value="Yes" data-export="Phantom Assemblies"><span>Yes</span></label>
+      <label><input type="radio" name="phantom" value="No" data-export="Phantom Assemblies"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label class="required">How do you manage BOM versions and revisions?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Date-effective" data-export="BOM Versioning"><span>Date-effective revisions</span></label>
+      <label><input type="checkbox" value="Sequential revisions" data-export="BOM Versioning"><span>Sequential revisions (v1, v2, v3)</span></label>
+      <label><input type="checkbox" value="Effectivity dates" data-export="BOM Versioning"><span>Effectivity dates on components</span></label>
+      <label><input type="checkbox" value="Engineering Change Orders" data-export="BOM Versioning"><span>Engineering Change Orders (ECO)</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you have effectivity dates for components (effective from/through)?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="effectivity" value="Yes" data-export="Component Effectivity"><span>Yes</span></label>
+      <label><input type="radio" name="effectivity" value="No" data-export="Component Effectivity"><span>No</span></label>
+      <label><input type="radio" name="effectivity" value="Some assemblies" data-export="Component Effectivity"><span>Some assemblies only</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>How do you manage engineering change requests today?</label>
+    <textarea data-export="ECM Process" placeholder="e.g., Spreadsheet tracking, formal ECR/ECO process, email-based approvals"></textarea>
+  </div>
+</div>
+
+<!-- SECTION 3: Work Order Management -->
+<div class="section">
+  <h2>3. Work Order Management</h2>
+  <p class="section-desc">Work order creation, approval workflows, and order statuses.</p>
+
+  <div class="field">
+    <label class="required">How are work orders typically created?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Manual entry" data-export="WO Creation Methods"><span>Manual entry</span></label>
+      <label><input type="checkbox" value="Auto from sales orders" data-export="WO Creation Methods"><span>Auto from sales orders</span></label>
+      <label><input type="checkbox" value="Auto from MRP/planning" data-export="WO Creation Methods"><span>Auto from MRP/planning</span></label>
+      <label><input type="checkbox" value="Kitting list" data-export="WO Creation Methods"><span>From kitting list</span></label>
+      <label><input type="checkbox" value="Bulk import" data-export="WO Creation Methods"><span>Bulk import</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label class="required">What work order types do you use?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Production" data-export="WO Types"><span>Production</span></label>
+      <label><input type="checkbox" value="Assembly" data-export="WO Types"><span>Assembly</span></label>
+      <label><input type="checkbox" value="Maintenance" data-export="WO Types"><span>Maintenance/Repair</span></label>
+      <label><input type="checkbox" value="Service" data-export="WO Types"><span>Service/Custom build</span></label>
+      <label><input type="checkbox" value="Rework" data-export="WO Types"><span>Rework/Scrap recovery</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do work orders require approval before release?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="wo_approval" value="Yes" data-export="WO Approval Required"><span>Yes</span></label>
+      <label><input type="radio" name="wo_approval" value="No" data-export="WO Approval Required"><span>No</span></label>
+      <label><input type="radio" name="wo_approval" value="Above threshold" data-export="WO Approval Required"><span>Above certain quantity/value</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label class="required">What work order statuses do you need to track?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Planned" data-export="WO Statuses"><span>Planned</span></label>
+      <label><input type="checkbox" value="Released" data-export="WO Statuses"><span>Released</span></label>
+      <label><input type="checkbox" value="In Progress" data-export="WO Statuses"><span>In Progress</span></label>
+      <label><input type="checkbox" value="Completed" data-export="WO Statuses"><span>Completed</span></label>
+      <label><input type="checkbox" value="Closed" data-export="WO Statuses"><span>Closed</span></label>
+      <label><input type="checkbox" value="On Hold" data-export="WO Statuses"><span>On Hold</span></label>
+      <label><input type="checkbox" value="Cancelled" data-export="WO Statuses"><span>Cancelled</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you use work order templates for standard products?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="wo_templates" value="Yes" data-export="WO Templates"><span>Yes</span></label>
+      <label><input type="radio" name="wo_templates" value="No" data-export="WO Templates"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>How do you prioritize work orders?</label>
+    <textarea data-export="WO Priority Method" placeholder="e.g., FIFO, by priority code, by due date, manual assignment"></textarea>
+  </div>
+</div>
+
+<!-- SECTION 4: Assembly Builds -->
+<div class="section">
+  <h2>4. Assembly Builds</h2>
+  <p class="section-desc">Build processes, tolerances, and completion workflows.</p>
+
+  <div class="field">
+    <label class="required">Do you track assembly builds as a separate process from work orders?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="assembly_tracking" value="Yes - separate" data-export="Assembly Build Tracking"><span>Yes - separate process</span></label>
+      <label><input type="radio" name="assembly_tracking" value="Part of WO" data-export="Assembly Build Tracking"><span>Part of work order</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label class="required">What is your build quantity model?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="build_model" value="Build-to-Order" data-export="Build Model"><span>Build-to-Order (per sales order)</span></label>
+      <label><input type="radio" name="build_model" value="Build-to-Stock" data-export="Build Model"><span>Build-to-Stock (forecast-driven)</span></label>
+      <label><input type="radio" name="build_model" value="Mixed" data-export="Build Model"><span>Mixed approach</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you allow partial builds / incremental production?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="partial_builds" value="Yes" data-export="Partial Builds"><span>Yes</span></label>
+      <label><input type="radio" name="partial_builds" value="No" data-export="Partial Builds"><span>No - must complete full quantity</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you allow over/under build tolerance?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="over_under_build" value="Yes" data-export="Over/Under Build Tolerance"><span>Yes</span></label>
+      <label><input type="radio" name="over_under_build" value="No" data-export="Over/Under Build Tolerance"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>If yes to over/under build, what is the tolerance percentage?</label>
+    <input type="text" data-export="Build Tolerance %" placeholder="e.g., +/- 5%">
+  </div>
+
+  <div class="field">
+    <label class="required">How do you handle material issuance to production?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="issuance_method" value="Backflush" data-export="Material Issuance"><span>Backflush (issue when build complete)</span></label>
+      <label><input type="radio" name="issuance_method" value="Manual issue" data-export="Material Issuance"><span>Manual issue at start of build</span></label>
+      <label><input type="radio" name="issuance_method" value="Point of use" data-export="Material Issuance"><span>Point of use (as consumed)</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>What is your build completion process?</label>
+    <textarea data-export="Build Completion Process" placeholder="e.g., QC inspection required, final location placement, receipt to finished goods, mark complete"></textarea>
+  </div>
+</div>
+
+<!-- SECTION 5: Component Management -->
+<div class="section">
+  <h2>5. Component Management</h2>
+  <p class="section-desc">Component availability, substitution, and waste tracking.</p>
+
+  <div class="field">
+    <label class="required">How do you check component availability before releasing a work order?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Manual check" data-export="Availability Check"><span>Manual check</span></label>
+      <label><input type="checkbox" value="System ATP" data-export="Availability Check"><span>System Available-to-Promise (ATP)</span></label>
+      <label><input type="checkbox" value="Allocated inventory" data-export="Availability Check"><span>Check allocated inventory</span></label>
+      <label><input type="checkbox" value="No check" data-export="Availability Check"><span>No check - release and expedite</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you allow component substitution in production?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="substitution" value="Yes - managed" data-export="Component Substitution"><span>Yes - managed via BOM alternates</span></label>
+      <label><input type="radio" name="substitution" value="Yes - ad hoc" data-export="Component Substitution"><span>Yes - ad hoc as-needed</span></label>
+      <label><input type="radio" name="substitution" value="No" data-export="Component Substitution"><span>No - strict BOM adherence</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label class="required">How do you track scrap, waste, and yield loss?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Scrap codes" data-export="Scrap Tracking"><span>Scrap codes by reason</span></label>
+      <label><input type="checkbox" value="Yield %s" data-export="Scrap Tracking"><span>Yield percentages by component</span></label>
+      <label><input type="checkbox" value="Rework issues" data-export="Scrap Tracking"><span>Rework/return to inventory</span></label>
+      <label><input type="checkbox" value="Manual tracking" data-export="Scrap Tracking"><span>Manual tracking only</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>What is the average yield percentage for your products?</label>
+    <input type="text" data-export="Average Yield %" placeholder="e.g., 94% (6% scrap/waste)">
+  </div>
+
+  <div class="field">
+    <label>Do you produce co-products or by-products?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="coproducts" value="Yes" data-export="Co-Products/By-Products"><span>Yes</span></label>
+      <label><input type="radio" name="coproducts" value="No" data-export="Co-Products/By-Products"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>If yes, describe co-products and how they are tracked</label>
+    <textarea data-export="Co-Product Details" placeholder="e.g., Main product: Widget A, By-product: Widget Scrap (recycle), Co-product: Component X"></textarea>
+  </div>
+</div>
+
+<!-- SECTION 6: Production Costing -->
+<div class="section">
+  <h2>6. Production Costing</h2>
+  <p class="section-desc">Costing methods, labor allocation, overhead, and variance analysis.</p>
+
+  <div class="field">
+    <label class="required">What costing method do you use?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="costing_method" value="Standard" data-export="Costing Method"><span>Standard costing</span></label>
+      <label><input type="radio" name="costing_method" value="Average" data-export="Costing Method"><span>Average costing</span></label>
+      <label><input type="radio" name="costing_method" value="FIFO" data-export="Costing Method"><span>FIFO</span></label>
+      <label><input type="radio" name="costing_method" value="Actual" data-export="Costing Method"><span>Actual costing</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label class="required">How is labor costed in production?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="By operation" data-export="Labor Costing"><span>By operation / routing step</span></label>
+      <label><input type="checkbox" value="Labor class" data-export="Labor Costing"><span>By labor class (hourly rate)</span></label>
+      <label><input type="checkbox" value="Fixed cost" data-export="Labor Costing"><span>Fixed overhead allocation</span></label>
+      <label><input type="checkbox" value="Time tracking" data-export="Labor Costing"><span>Actual time tracking by employee</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label class="required">How is manufacturing overhead allocated?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="% of labor" data-export="Overhead Allocation"><span>Percentage of labor cost</span></label>
+      <label><input type="checkbox" value="% of material" data-export="Overhead Allocation"><span>Percentage of material cost</span></label>
+      <label><input type="checkbox" value="Machine hours" data-export="Overhead Allocation"><span>Machine hours</span></label>
+      <label><input type="checkbox" value="Floor area" data-export="Overhead Allocation"><span>Floor space allocation</span></label>
+      <label><input type="checkbox" value="Activity-based" data-export="Overhead Allocation"><span>Activity-based costing (ABC)</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label class="required">What production variances do you track and analyze?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Material Qty" data-export="Variance Types"><span>Material quantity variance</span></label>
+      <label><input type="checkbox" value="Material Price" data-export="Variance Types"><span>Material price variance</span></label>
+      <label><input type="checkbox" value="Labor Qty" data-export="Variance Types"><span>Labor quantity / efficiency variance</span></label>
+      <label><input type="checkbox" value="Labor Rate" data-export="Variance Types"><span>Labor rate variance</span></label>
+      <label><input type="checkbox" value="Overhead" data-export="Variance Types"><span>Overhead variance</span></label>
+      <label><input type="checkbox" value="Volume" data-export="Variance Types"><span>Volume variance</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>How often do you roll up / update product costs?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="cost_rollup" value="Monthly" data-export="Cost Rollup Frequency"><span>Monthly</span></label>
+      <label><input type="radio" name="cost_rollup" value="Quarterly" data-export="Cost Rollup Frequency"><span>Quarterly</span></label>
+      <label><input type="radio" name="cost_rollup" value="As-needed" data-export="Cost Rollup Frequency"><span>As-needed</span></label>
+      <label><input type="radio" name="cost_rollup" value="Never" data-export="Cost Rollup Frequency"><span>Not tracked</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Describe your cost rollup process (how are component costs rolled into parent assemblies)</label>
+    <textarea data-export="Cost Rollup Process" placeholder="e.g., BOM-based rollup with overhead absorption, manual review and adjustment"></textarea>
+  </div>
+</div>
+
+<!-- SECTION 7: Quality & Compliance -->
+<div class="section">
+  <h2>7. Quality & Compliance</h2>
+  <p class="section-desc">Quality checkpoints, lot/serial tracking, and regulatory requirements.</p>
+
+  <div class="field">
+    <label class="required">Do you perform quality inspections during production?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="quality_check" value="Yes - at checkpoints" data-export="Quality Inspections"><span>Yes - at inspection checkpoints</span></label>
+      <label><input type="radio" name="quality_check" value="Yes - 100% final" data-export="Quality Inspections"><span>Yes - 100% final inspection</span></label>
+      <label><input type="radio" name="quality_check" value="Yes - sampling" data-export="Quality Inspections"><span>Yes - sample-based inspection</span></label>
+      <label><input type="radio" name="quality_check" value="No" data-export="Quality Inspections"><span>No formal inspection</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you require lot or serial number tracking?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Lot numbers" data-export="Lot/Serial Tracking"><span>Lot numbers</span></label>
+      <label><input type="checkbox" value="Serial numbers" data-export="Lot/Serial Tracking"><span>Serial numbers</span></label>
+      <label><input type="checkbox" value="Expiration dates" data-export="Lot/Serial Tracking"><span>Expiration dates</span></label>
+      <label><input type="checkbox" value="None" data-export="Lot/Serial Tracking"><span>None - bulk tracking</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label class="required">Do you have regulatory / compliance requirements?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="FDA" data-export="Compliance Requirements"><span>FDA (food, pharma, medical)</span></label>
+      <label><input type="checkbox" value="ISO" data-export="Compliance Requirements"><span>ISO certification (9001, etc.)</span></label>
+      <label><input type="checkbox" value="ITAR" data-export="Compliance Requirements"><span>ITAR (defense/export)</span></label>
+      <label><input type="checkbox" value="RoHS/REACH" data-export="Compliance Requirements"><span>RoHS / REACH</span></label>
+      <label><input type="checkbox" value="Industry standards" data-export="Compliance Requirements"><span>Industry-specific standards</span></label>
+      <label><input type="checkbox" value="None" data-export="Compliance Requirements"><span>None</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>What documentation is required for traceability and compliance?</label>
+    <textarea data-export="Compliance Documentation" placeholder="e.g., CoC certificates, test reports, material certifications, production batch records"></textarea>
+  </div>
+
+  <div class="field">
+    <label>Do you track first-pass yield (FPY) or defect rates?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="fpy_tracking" value="Yes" data-export="FPY Tracking"><span>Yes</span></label>
+      <label><input type="radio" name="fpy_tracking" value="Partial" data-export="FPY Tracking"><span>Partial / some products only</span></label>
+      <label><input type="radio" name="fpy_tracking" value="No" data-export="FPY Tracking"><span>No</span></label>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 8: Production Reporting -->
+<div class="section">
+  <h2>8. Production Reporting</h2>
+  <p class="section-desc">Key reports, dashboards, and performance metrics.</p>
+
+  <div class="field">
+    <label class="required">What production reports do you need to generate?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="WO Status" data-export="Production Reports"><span>Work order status/progress</span></label>
+      <label><input type="checkbox" value="Production Variance" data-export="Production Reports"><span>Material usage variance</span></label>
+      <label><input type="checkbox" value="Efficiency" data-export="Production Reports"><span>Production efficiency / labor productivity</span></label>
+      <label><input type="checkbox" value="Output" data-export="Production Reports"><span>Production output / throughput</span></label>
+      <label><input type="checkbox" value="Capacity" data-export="Production Reports"><span>Capacity utilization</span></label>
+      <label><input type="checkbox" value="Costing" data-export="Production Reports"><span>Cost analysis / variance report</span></label>
+      <label><input type="checkbox" value="Schedule" data-export="Production Reports"><span>Production schedule vs. actual</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>How frequently do you need production reports?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="report_freq" value="Daily" data-export="Report Frequency"><span>Daily</span></label>
+      <label><input type="radio" name="report_freq" value="Weekly" data-export="Report Frequency"><span>Weekly</span></label>
+      <label><input type="radio" name="report_freq" value="Monthly" data-export="Report Frequency"><span>Monthly</span></label>
+      <label><input type="radio" name="report_freq" value="On-demand" data-export="Report Frequency"><span>On-demand</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you use production dashboards?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="dashboards" value="Yes" data-export="Production Dashboards"><span>Yes</span></label>
+      <label><input type="radio" name="dashboards" value="Plan to" data-export="Production Dashboards"><span>Plan to implement</span></label>
+      <label><input type="radio" name="dashboards" value="No" data-export="Production Dashboards"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Describe the top 3 metrics you track for production</label>
+    <textarea data-export="Top Metrics" placeholder="e.g., On-time delivery %, First-pass yield %, Cost variance %"></textarea>
+  </div>
+</div>
+
+<!-- SECTION 9: Current Production Process -->
+<div class="section">
+  <h2>9. Current Production Process</h2>
+  <p class="section-desc">Today's system and process, pain points, and what works well.</p>
+
+  <div class="field">
+    <label class="required">What system(s) do you currently use for production planning and work orders?</label>
+    <textarea data-export="Current Production System" placeholder="e.g., SAP, Infor, legacy ERP, spreadsheets, manual system"></textarea>
+  </div>
+
+  <div class="field">
+    <label>What percentage of production processes are automated vs. manual?</label>
+    <input type="text" data-export="Manual vs Automated %" placeholder="e.g., 70% automated manufacturing, 30% manual data entry">
+  </div>
+
+  <div class="field">
+    <label>What manual processes slow you down today?</label>
+    <textarea data-export="Manual Process Pain Points" placeholder="e.g., Manual BOM entry, spreadsheet cost updates, manual material issue tracking"></textarea>
+  </div>
+
+  <div class="field">
+    <label>How is production data tracked today?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="ERP system" data-export="Data Tracking Method"><span>ERP system</span></label>
+      <label><input type="checkbox" value="Spreadsheets" data-export="Data Tracking Method"><span>Spreadsheets</span></label>
+      <label><input type="checkbox" value="Paper shopfloor" data-export="Data Tracking Method"><span>Paper-based on shop floor</span></label>
+      <label><input type="checkbox" value="MES" data-export="Data Tracking Method"><span>Manufacturing Execution System (MES)</span></label>
+      <label><input type="checkbox" value="Mixed" data-export="Data Tracking Method"><span>Mixed systems</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>What works well with your current production system?</label>
+    <textarea data-export="What Works Well" placeholder="Describe positive aspects and things you want to keep"></textarea>
+  </div>
+
+  <div class="field">
+    <label>What are your top 3 pain points with production today?</label>
+    <textarea data-export="Top Pain Points" placeholder="e.g., BOM accuracy issues, slow variance reporting, manual cost updates"></textarea>
+  </div>
+</div>
+
+<!-- SECTION 10: Custom Fields & Integration -->
+<div class="section">
+  <h2>10. Additional Requirements</h2>
+  <p class="section-desc">Custom fields, integrations, and other production-specific needs.</p>
+
+  <div class="field">
+    <label>What custom fields do you need on work orders?</label>
+    <textarea data-export="WO Custom Fields" placeholder="e.g., Customer PO#, Production Line, Shift, Priority Code, Machine ID"></textarea>
+  </div>
+
+  <div class="field">
+    <label>Do you need production data to flow to other systems?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="integrations" value="Yes" data-export="Production Integrations"><span>Yes</span></label>
+      <label><input type="radio" name="integrations" value="No" data-export="Production Integrations"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>If yes, describe integrations needed (MES, shop floor, scheduling, quality systems, etc.)</label>
+    <textarea data-export="Integration Details" placeholder="e.g., MES for real-time tracking, scheduling software, quality lab system"></textarea>
+  </div>
+
+  <div class="field">
+    <label>Do you have production scheduling requirements?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="scheduling" value="Basic (FIFO)" data-export="Scheduling Needs"><span>Basic (FIFO / manual)</span></label>
+      <label><input type="radio" name="scheduling" value="Advanced (optimization)" data-export="Scheduling Needs"><span>Advanced (constraint optimization)</span></label>
+      <label><input type="radio" name="scheduling" value="None" data-export="Scheduling Needs"><span>None - use external tool</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>What other notes or requirements should we capture?</label>
+    <textarea data-export="Additional Notes" placeholder="Capture any other production or assembly build requirements discussed"></textarea>
+  </div>
+</div>
+
+</div><!-- end container -->
+
+<div class="btn-bar">
+  <button class="btn btn-secondary" onclick="clearForm()">Clear Form</button>
+  <button class="btn btn-primary" onclick="exportToExcel()">Export to Excel</button>
+  <button class="btn btn-drive" id="btnDrive" onclick="saveToDrive()" disabled title="Loading Google Drive..."><span class="drive-icon">📁</span> Save to Google Drive</button>
+</div>
+
+<div class="toast" id="toast">Exported successfully!</div>
+
+<script>
+// Track progress
+function updateProgress() {
+  const fields = document.querySelectorAll('input[type="text"], input[type="number"], input[type="date"], select, textarea');
+  const radios = {};
+  document.querySelectorAll('input[type="radio"]').forEach(r => { if(r.checked) radios[r.name] = true; });
+  const checkboxes = {};
+  document.querySelectorAll('input[type="checkbox"]').forEach(c => { if(c.checked) checkboxes[c.closest('.field')?.querySelector('label')?.textContent || 'x'] = true; });
+  let filled = 0, total = 0;
+  fields.forEach(f => { total++; if(f.value.trim()) filled++; });
+  const radioGroups = new Set();
+  document.querySelectorAll('input[type="radio"]').forEach(r => radioGroups.add(r.name));
+  total += radioGroups.size;
+  filled += Object.keys(radios).length;
+  const pct = total > 0 ? Math.round((filled / total) * 100) : 0;
+  document.getElementById('progressPct').textContent = pct + '%';
+  document.getElementById('progressFill').style.width = pct + '%';
+}
+document.addEventListener('input', updateProgress);
+document.addEventListener('change', updateProgress);
+
+function exportToExcel() {
+  const data = [];
+  const sections = document.querySelectorAll('.section, .meta-section');
+  sections.forEach(section => {
+    const sectionTitle = section.querySelector('h2')?.textContent || '';
+    const fields = section.querySelectorAll('.field');
+    fields.forEach(field => {
+      const label = field.querySelector('label')?.textContent?.replace(' *', '') || '';
+      let value = '';
+      const input = field.querySelector('input[type="text"], input[type="number"], input[type="date"], select, textarea');
+      if (input) { value = input.value; }
+      const checkedRadio = field.querySelector('input[type="radio"]:checked');
+      if (checkedRadio) { value = checkedRadio.value; }
+      const checkedBoxes = field.querySelectorAll('input[type="checkbox"]:checked');
+      if (checkedBoxes.length > 0) { value = Array.from(checkedBoxes).map(c => c.value).join(', '); }
+      data.push({ 'Section': sectionTitle, 'Question': label, 'Response': value });
+    });
+  });
+  const ws = XLSX.utils.json_to_sheet(data);
+  ws['!cols'] = [{ wch: 30 }, { wch: 60 }, { wch: 60 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Work Order - Assembly Build');
+  const clientName = document.querySelector('[data-export="Client Name"]')?.value || 'Client';
+  const date = new Date().toISOString().split('T')[0];
+  XLSX.writeFile(wb, `${clientName}_Work-Order-Assembly-Build_${date}.xlsx`);
+  showToast();
+}
+
+function clearForm() {
+  if (confirm('Are you sure you want to clear all fields?')) {
+    document.querySelectorAll('input[type="text"], input[type="number"], input[type="date"], textarea').forEach(f => f.value = '');
+    document.querySelectorAll('select').forEach(s => s.selectedIndex = 0);
+    document.querySelectorAll('input[type="radio"], input[type="checkbox"]').forEach(c => c.checked = false);
+    updateProgress();
+  }
+}
+
+function showToast() {
+  const t = document.getElementById('toast');
+  t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 2500);
+}
+</script>
+</body>
+</html>

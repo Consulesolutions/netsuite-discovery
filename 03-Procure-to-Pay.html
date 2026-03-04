@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NetSuite Discovery: Procure to Pay</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #f0f2f5; color: #1a1a2e; line-height: 1.6; }
+.header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); color: white; padding: 40px 20px; text-align: center; }
+.header h1 { font-size: 28px; margin-bottom: 8px; }
+.header p { opacity: 0.85; font-size: 15px; max-width: 600px; margin: 0 auto; }
+.container { max-width: 900px; margin: 30px auto; padding: 0 20px 60px; }
+.meta-section { background: white; border-radius: 12px; padding: 30px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.meta-section h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #0f3460; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #e8ecf1; }
+.section { background: white; border-radius: 12px; padding: 30px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.section h2 { font-size: 20px; color: #0f3460; margin-bottom: 6px; }
+.section .section-desc { color: #666; font-size: 14px; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 2px solid #e8ecf1; }
+.field { margin-bottom: 20px; }
+.field label { display: block; font-weight: 600; font-size: 14px; margin-bottom: 6px; color: #333; }
+.field .hint { font-size: 12px; color: #888; margin-bottom: 6px; font-style: italic; }
+.field input[type="text"], .field input[type="number"], .field input[type="date"], .field select, .field textarea {
+  width: 100%; padding: 10px 14px; border: 1.5px solid #d1d5db; border-radius: 8px; font-size: 14px; font-family: inherit; transition: border-color 0.2s; background: #fafbfc;
+}
+.field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: #0f3460; background: white; box-shadow: 0 0 0 3px rgba(15,52,96,0.08); }
+.field textarea { min-height: 80px; resize: vertical; }
+.radio-group, .checkbox-group { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 6px; }
+.radio-group label, .checkbox-group label { font-weight: 400; display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 6px 14px; border: 1.5px solid #d1d5db; border-radius: 8px; font-size: 14px; transition: all 0.2s; background: #fafbfc; }
+.radio-group label:hover, .checkbox-group label:hover { border-color: #0f3460; background: #f0f4ff; }
+.radio-group input:checked + span, .checkbox-group input:checked + span { color: #0f3460; font-weight: 600; }
+.radio-group label:has(input:checked), .checkbox-group label:has(input:checked) { border-color: #0f3460; background: #eef2ff; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 600px) { .grid-2 { grid-template-columns: 1fr; } }
+.btn-bar { position: sticky; bottom: 0; background: white; padding: 16px 20px; border-top: 1px solid #e5e7eb; display: flex; justify-content: center; gap: 12px; z-index: 10; }
+.btn { padding: 12px 32px; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+.btn-primary { background: #0f3460; color: white; }
+.btn-primary:hover { background: #1a4a7a; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(15,52,96,0.3); }
+.btn-secondary { background: #e8ecf1; color: #0f3460; }
+.btn-drive { background: #1a73e8; color: white; display: flex; align-items: center; gap: 8px; }
+.btn-drive:hover { background: #1557b0; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(26,115,232,0.3); }
+.btn-drive:disabled { background: #93c5fd; cursor: wait; }
+.drive-icon { font-size: 18px; }
+.btn-secondary:hover { background: #d1d8e4; }
+.required::after { content: ' *'; color: #e53e3e; }
+.progress-bar { background: #e8ecf1; height: 6px; border-radius: 3px; margin: 20px 0; overflow: hidden; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, #0f3460, #4a90d9); border-radius: 3px; transition: width 0.5s ease; }
+.progress-text { text-align: center; font-size: 13px; color: #666; margin-bottom: 10px; }
+.toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: #10b981; color: white; padding: 12px 24px; border-radius: 8px; font-weight: 600; z-index: 100; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+</style>
+<script src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
+<script src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
+<script src="drive-upload.js"></script>
+</head>
+<body>
+
+<div class="header">
+  <a href="index.html" style="color:rgba(255,255,255,0.7);text-decoration:none;font-size:13px;display:inline-block;margin-bottom:10px;">&larr; Back to all forms</a>
+  <h1>Procure to Pay</h1>
+  <p>NetSuite ERP Discovery Questionnaire — Procurement, Purchasing, Receiving, AP, and Vendor Management</p>
+</div>
+
+<div class="container">
+
+<div class="meta-section">
+  <h2>Session Information</h2>
+  <div class="grid-2">
+    <div class="field"><label class="required">Client / Company Name</label><input type="text" data-export="Client Name"></div>
+    <div class="field"><label class="required">Completed By</label><input type="text" data-export="Completed By"></div>
+    <div class="field"><label>Date</label><input type="date" data-export="Date"></div>
+    <div class="field"><label>Session Attendees</label><input type="text" data-export="Attendees" placeholder="Names and roles"></div>
+  </div>
+</div>
+
+<div class="progress-text">Completion: <span id="progressPct">0%</span></div>
+<div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+
+<!-- SECTION 1: Vendor Management -->
+<div class="section">
+  <h2>1. Vendor Management</h2>
+  <p class="section-desc">Vendor base, categorization, onboarding, approval, and vendor portal requirements.</p>
+
+  <div class="field">
+    <label class="required">How many active vendors does the company have?</label>
+    <input type="number" data-export="Total Active Vendors" placeholder="e.g., 150">
+  </div>
+
+  <div class="field">
+    <label>How are vendors currently categorized?</label>
+    <textarea data-export="Vendor Categorization" placeholder="e.g., By commodity type (materials, services), by spend level (strategic, standard, spot), by geography, by payment terms"></textarea>
+  </div>
+
+  <div class="field">
+    <label>Is there a formal vendor onboarding process?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="vendor_onboard" value="Yes - formal" data-export="Vendor Onboarding Process"><span>Yes - formal</span></label>
+      <label><input type="radio" name="vendor_onboard" value="Yes - basic" data-export="Vendor Onboarding Process"><span>Yes - basic</span></label>
+      <label><input type="radio" name="vendor_onboard" value="No" data-export="Vendor Onboarding Process"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you need vendor approval workflows before adding vendors?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="vendor_approval" value="Yes" data-export="Vendor Approval Workflow"><span>Yes</span></label>
+      <label><input type="radio" name="vendor_approval" value="No" data-export="Vendor Approval Workflow"><span>No</span></label>
+      <label><input type="radio" name="vendor_approval" value="Based on spend" data-export="Vendor Approval Workflow"><span>Based on spend threshold</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you track 1099 vendors (US tax reporting)?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="vendor_1099" value="Yes" data-export="1099 Tracking"><span>Yes</span></label>
+      <label><input type="radio" name="vendor_1099" value="No" data-export="1099 Tracking"><span>No</span></label>
+      <label><input type="radio" name="vendor_1099" value="Some" data-export="1099 Tracking"><span>Some vendors</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you require a vendor portal for vendor self-service?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Portal not needed" data-export="Vendor Portal"><span>Not needed</span></label>
+      <label><input type="checkbox" value="PO visibility" data-export="Vendor Portal"><span>PO visibility</span></label>
+      <label><input type="checkbox" value="Invoice submission" data-export="Vendor Portal"><span>Invoice submission</span></label>
+      <label><input type="checkbox" value="Payment status" data-export="Vendor Portal"><span>Payment status</span></label>
+      <label><input type="checkbox" value="Self-service profile" data-export="Vendor Portal"><span>Self-service profile mgmt</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>What vendor information must be captured?</label>
+    <textarea data-export="Vendor Information Requirements" placeholder="e.g., Company name, address, tax ID, W9, insurance certificates, banking details, contract terms"></textarea>
+  </div>
+</div>
+
+<!-- SECTION 2: Purchase Requisitions -->
+<div class="section">
+  <h2>2. Purchase Requisitions</h2>
+  <p class="section-desc">Requisition processes, workflows, and conversion to POs.</p>
+
+  <div class="field">
+    <label class="required">Do you use purchase requisitions?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="use_req" value="Yes" data-export="Use Requisitions"><span>Yes</span></label>
+      <label><input type="radio" name="use_req" value="No - direct to PO" data-export="Use Requisitions"><span>No - create POs directly</span></label>
+      <label><input type="radio" name="use_req" value="Planned" data-export="Use Requisitions"><span>Plan to implement</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>If yes, who can create requisitions?</label>
+    <textarea data-export="Requisition Creators" placeholder="e.g., Department managers, procurement team, employees, anyone"></textarea>
+  </div>
+
+  <div class="field">
+    <label>Do requisitions require approval before PO creation?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="req_approval" value="Yes" data-export="Requisition Approval"><span>Yes</span></label>
+      <label><input type="radio" name="req_approval" value="No" data-export="Requisition Approval"><span>No</span></label>
+      <label><input type="radio" name="req_approval" value="Based on amount" data-export="Requisition Approval"><span>Based on amount threshold</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Describe requisition approval levels and thresholds</label>
+    <textarea data-export="Requisition Approval Levels" placeholder="e.g., Under $1K: manager approval, $1K-$5K: director, Over $5K: CFO"></textarea>
+  </div>
+
+  <div class="field">
+    <label>How are requisitions converted to POs?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="req_to_po" value="Manual" data-export="Requisition to PO"><span>Manual creation</span></label>
+      <label><input type="radio" name="req_to_po" value="Automated" data-export="Requisition to PO"><span>Automated conversion</span></label>
+      <label><input type="radio" name="req_to_po" value="Both" data-export="Requisition to PO"><span>Both methods</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you use blanket POs or standing POs?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="blanket_po" value="Yes" data-export="Blanket POs"><span>Yes</span></label>
+      <label><input type="radio" name="blanket_po" value="No" data-export="Blanket POs"><span>No</span></label>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 3: Purchase Orders -->
+<div class="section">
+  <h2>3. Purchase Orders</h2>
+  <p class="section-desc">PO creation, approval workflows, types, terms, and delivery methods.</p>
+
+  <div class="field">
+    <label class="required">How are POs currently created?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Manual in system" data-export="PO Creation Methods"><span>Manual in accounting system</span></label>
+      <label><input type="checkbox" value="From requisitions" data-export="PO Creation Methods"><span>From requisitions</span></label>
+      <label><input type="checkbox" value="Manual via email" data-export="PO Creation Methods"><span>Manual via email</span></label>
+      <label><input type="checkbox" value="From supplier portal" data-export="PO Creation Methods"><span>From supplier/punchout catalog</span></label>
+      <label><input type="checkbox" value="Import/upload" data-export="PO Creation Methods"><span>Import/upload</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label class="required">Do POs require approval before sending to vendor?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="po_approval" value="Yes" data-export="PO Approval Required"><span>Yes</span></label>
+      <label><input type="radio" name="po_approval" value="No" data-export="PO Approval Required"><span>No</span></label>
+      <label><input type="radio" name="po_approval" value="Based on amount" data-export="PO Approval Required"><span>Based on amount</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Describe PO approval thresholds and approvers</label>
+    <textarea data-export="PO Approval Workflow" placeholder="e.g., Under $1K: procurement, $1K-$10K: manager, $10K-$50K: director, Over $50K: VP/CFO"></textarea>
+  </div>
+
+  <div class="field">
+    <label class="required">What PO types do you use?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Standard one-time" data-export="PO Types"><span>Standard one-time</span></label>
+      <label><input type="checkbox" value="Blanket" data-export="PO Types"><span>Blanket</span></label>
+      <label><input type="checkbox" value="Drop-ship" data-export="PO Types"><span>Drop-ship</span></label>
+      <label><input type="checkbox" value="Special order" data-export="PO Types"><span>Special order</span></label>
+      <label><input type="checkbox" value="Standing order" data-export="PO Types"><span>Standing/recurring</span></label>
+      <label><input type="checkbox" value="Service" data-export="PO Types"><span>Service/Contract</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>How are POs delivered to vendors?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Email PDF" data-export="PO Delivery"><span>Email PDF</span></label>
+      <label><input type="checkbox" value="Fax" data-export="PO Delivery"><span>Fax</span></label>
+      <label><input type="checkbox" value="EDI" data-export="PO Delivery"><span>EDI</span></label>
+      <label><input type="checkbox" value="Vendor portal" data-export="PO Delivery"><span>Vendor portal</span></label>
+      <label><input type="checkbox" value="API integration" data-export="PO Delivery"><span>API integration</span></label>
+      <label><input type="checkbox" value="Manual handoff" data-export="PO Delivery"><span>Manual handoff</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>What key terms must be tracked on POs?</label>
+    <textarea data-export="PO Terms" placeholder="e.g., Payment terms, delivery date, shipping method, special instructions, pricing, tax, freight"></textarea>
+  </div>
+</div>
+
+<!-- SECTION 4: Receiving & Item Receipt -->
+<div class="section">
+  <h2>4. Receiving & Item Receipt</h2>
+  <p class="section-desc">Receiving process, matching logic, inspections, and landed costs.</p>
+
+  <div class="field">
+    <label class="required">What matching method do you use?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="matching" value="3-way match" data-export="Matching Method"><span>3-way match (PO-Receipt-Bill)</span></label>
+      <label><input type="radio" name="matching" value="2-way match" data-export="Matching Method"><span>2-way match (PO-Bill)</span></label>
+      <label><input type="radio" name="matching" value="No formal match" data-export="Matching Method"><span>No formal matching</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you allow partial receipts?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="partial_receipt" value="Yes" data-export="Partial Receipts"><span>Yes</span></label>
+      <label><input type="radio" name="partial_receipt" value="No" data-export="Partial Receipts"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>What tolerance level for receipt variance?</label>
+    <textarea data-export="Receipt Tolerance" placeholder="e.g., Qty variance: +/- 2%, amount variance: $100 or 5%"></textarea>
+  </div>
+
+  <div class="field">
+    <label>Do you track landed costs at receipt?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="landed_cost" value="Yes" data-export="Landed Cost Tracking"><span>Yes</span></label>
+      <label><input type="radio" name="landed_cost" value="No" data-export="Landed Cost Tracking"><span>No</span></label>
+      <label><input type="radio" name="landed_cost" value="Planned" data-export="Landed Cost Tracking"><span>Plan to implement</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you require quality inspection at receipt?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="quality_insp" value="Yes - all items" data-export="Quality Inspection"><span>Yes - all items</span></label>
+      <label><input type="radio" name="quality_insp" value="Yes - select items" data-export="Quality Inspection"><span>Yes - select items</span></label>
+      <label><input type="radio" name="quality_insp" value="No" data-export="Quality Inspection"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you receive ASN (Advanced Ship Notices) from suppliers?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="asn" value="Yes" data-export="ASN"><span>Yes</span></label>
+      <label><input type="radio" name="asn" value="No" data-export="ASN"><span>No</span></label>
+      <label><input type="radio" name="asn" value="From some vendors" data-export="ASN"><span>From some vendors</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>How is receiving data captured?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Manual entry" data-export="Receiving Capture Method"><span>Manual entry</span></label>
+      <label><input type="checkbox" value="Barcode scanning" data-export="Receiving Capture Method"><span>Barcode/QR scanning</span></label>
+      <label><input type="checkbox" value="From ASN" data-export="Receiving Capture Method"><span>Auto-populated from ASN</span></label>
+      <label><input type="checkbox" value="Mobile app" data-export="Receiving Capture Method"><span>Mobile app</span></label>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 5: Vendor Bills & AP -->
+<div class="section">
+  <h2>5. Vendor Bills & Accounts Payable</h2>
+  <p class="section-desc">Bill entry, matching, approval, and payment terms.</p>
+
+  <div class="field">
+    <label class="required">How are vendor bills currently entered?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Manual entry" data-export="Bill Entry Method"><span>Manual entry</span></label>
+      <label><input type="checkbox" value="Email attachment" data-export="Bill Entry Method"><span>Email attachment</span></label>
+      <label><input type="checkbox" value="Vendor portal" data-export="Bill Entry Method"><span>Vendor portal submission</span></label>
+      <label><input type="checkbox" value="EDI" data-export="Bill Entry Method"><span>EDI/API integration</span></label>
+      <label><input type="checkbox" value="OCR scanning" data-export="Bill Entry Method"><span>OCR scanning</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label class="required">Do bills require matching to PO and receipt?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="bill_match" value="Yes - 3-way" data-export="Bill Matching"><span>Yes - 3-way</span></label>
+      <label><input type="radio" name="bill_match" value="Yes - 2-way" data-export="Bill Matching"><span>Yes - 2-way</span></label>
+      <label><input type="radio" name="bill_match" value="No" data-export="Bill Matching"><span>No matching required</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do vendor bills require approval before payment?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="bill_approval" value="Yes" data-export="Bill Approval Required"><span>Yes</span></label>
+      <label><input type="radio" name="bill_approval" value="No" data-export="Bill Approval Required"><span>No</span></label>
+      <label><input type="radio" name="bill_approval" value="Based on amount" data-export="Bill Approval Required"><span>Based on amount</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Describe bill approval thresholds</label>
+    <textarea data-export="Bill Approval Workflow" placeholder="e.g., Under $5K: AP manager, $5K-$25K: department head, Over $25K: CFO"></textarea>
+  </div>
+
+  <div class="field">
+    <label>What payment terms do you typically offer/receive?</label>
+    <textarea data-export="Payment Terms" placeholder="e.g., Net 30, Net 60, 2/10 Net 30, COD, prepaid"></textarea>
+  </div>
+
+  <div class="field">
+    <label>Do you take early payment discounts?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="early_discount" value="Yes - always" data-export="Early Payment Discounts"><span>Yes - always when available</span></label>
+      <label><input type="radio" name="early_discount" value="Yes - selective" data-export="Early Payment Discounts"><span>Yes - selectively</span></label>
+      <label><input type="radio" name="early_discount" value="No" data-export="Early Payment Discounts"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you have recurring/subscription bills?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="recurring_bills" value="Yes" data-export="Recurring Bills"><span>Yes</span></label>
+      <label><input type="radio" name="recurring_bills" value="No" data-export="Recurring Bills"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>How do you handle vendor credits and debit memos?</label>
+    <textarea data-export="Vendor Credits" placeholder="e.g., Applied to future invoices, refunded, offset against AP"></textarea>
+  </div>
+</div>
+
+<!-- SECTION 6: Payment Processing -->
+<div class="section">
+  <h2>6. Payment Processing</h2>
+  <p class="section-desc">Payment methods, batching, approval, and file formats.</p>
+
+  <div class="field">
+    <label class="required">What payment methods do you use?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Check" data-export="Payment Methods"><span>Check</span></label>
+      <label><input type="checkbox" value="ACH" data-export="Payment Methods"><span>ACH</span></label>
+      <label><input type="checkbox" value="Wire" data-export="Payment Methods"><span>Wire Transfer</span></label>
+      <label><input type="checkbox" value="Virtual Card" data-export="Payment Methods"><span>Virtual Card</span></label>
+      <label><input type="checkbox" value="Credit Card" data-export="Payment Methods"><span>Credit Card</span></label>
+      <label><input type="checkbox" value="EFT" data-export="Payment Methods"><span>EFT</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>How are payments batched?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="batch_method" value="Daily" data-export="Payment Batching"><span>Daily batches</span></label>
+      <label><input type="radio" name="batch_method" value="Weekly" data-export="Payment Batching"><span>Weekly batches</span></label>
+      <label><input type="radio" name="batch_method" value="Scheduled" data-export="Payment Batching"><span>Scheduled (bi-weekly, etc.)</span></label>
+      <label><input type="radio" name="batch_method" value="Ad-hoc" data-export="Payment Batching"><span>Ad-hoc as needed</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do payment batches require approval before processing?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="payment_approval" value="Yes" data-export="Payment Approval"><span>Yes</span></label>
+      <label><input type="radio" name="payment_approval" value="No" data-export="Payment Approval"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Describe payment approval requirements</label>
+    <textarea data-export="Payment Approval Process" placeholder="e.g., AP manager prepares, treasurer approves, CFO signs checks"></textarea>
+  </div>
+
+  <div class="field">
+    <label>Do you use positive pay for check fraud prevention?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="positive_pay" value="Yes" data-export="Positive Pay"><span>Yes</span></label>
+      <label><input type="radio" name="positive_pay" value="No" data-export="Positive Pay"><span>No</span></label>
+      <label><input type="radio" name="positive_pay" value="Planned" data-export="Positive Pay"><span>Planned</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>What payment file formats are required by your banks?</label>
+    <textarea data-export="Payment File Formats" placeholder="e.g., NACHA for ACH, SWIFT for wires, custom bank formats"></textarea>
+  </div>
+
+  <div class="field">
+    <label>How frequently are payments reconciled?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="payment_rec_freq" value="Daily" data-export="Payment Reconciliation Frequency"><span>Daily</span></label>
+      <label><input type="radio" name="payment_rec_freq" value="Weekly" data-export="Payment Reconciliation Frequency"><span>Weekly</span></label>
+      <label><input type="radio" name="payment_rec_freq" value="Monthly" data-export="Payment Reconciliation Frequency"><span>Monthly</span></label>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 7: Expense Management -->
+<div class="section">
+  <h2>7. Expense Management</h2>
+  <p class="section-desc">Employee expenses, corporate cards, and reimbursement workflows.</p>
+
+  <div class="field">
+    <label class="required">Do you have an employee expense reimbursement process?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="expense_process" value="Yes - formal" data-export="Expense Reimbursement Process"><span>Yes - formal system</span></label>
+      <label><input type="radio" name="expense_process" value="Yes - manual" data-export="Expense Reimbursement Process"><span>Yes - manual/ad-hoc</span></label>
+      <label><input type="radio" name="expense_process" value="No" data-export="Expense Reimbursement Process"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do expense reports require approval?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="expense_approval" value="Yes" data-export="Expense Approval"><span>Yes</span></label>
+      <label><input type="radio" name="expense_approval" value="No" data-export="Expense Approval"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you issue corporate credit cards?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="corp_card" value="Yes" data-export="Corporate Cards"><span>Yes</span></label>
+      <label><input type="radio" name="corp_card" value="No" data-export="Corporate Cards"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>How are corporate card expenses handled?</label>
+    <textarea data-export="Corporate Card Management" placeholder="e.g., Direct feed from bank, monthly reconciliation, charged to employee, company pays card"></textarea>
+  </div>
+
+  <div class="field">
+    <label>Do you have per diem policies?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="per_diem" value="Yes" data-export="Per Diem Policies"><span>Yes</span></label>
+      <label><input type="radio" name="per_diem" value="No" data-export="Per Diem Policies"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you track mileage reimbursement?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="mileage" value="Yes" data-export="Mileage Tracking"><span>Yes</span></label>
+      <label><input type="radio" name="mileage" value="No" data-export="Mileage Tracking"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>What expense categories must be tracked?</label>
+    <textarea data-export="Expense Categories" placeholder="e.g., Travel, meals, lodging, entertainment, office supplies, vehicle, training"></textarea>
+  </div>
+</div>
+
+<!-- SECTION 8: Procurement Reporting -->
+<div class="section">
+  <h2>8. Procurement Reporting & Analytics</h2>
+  <p class="section-desc">Spend analysis, vendor performance, and procurement metrics.</p>
+
+  <div class="field">
+    <label class="required">What procurement reports do you need?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Spend by vendor" data-export="Procurement Reports"><span>Spend by vendor</span></label>
+      <label><input type="checkbox" value="Spend by category" data-export="Procurement Reports"><span>Spend by category</span></label>
+      <label><input type="checkbox" value="PO status" data-export="Procurement Reports"><span>PO status tracking</span></label>
+      <label><input type="checkbox" value="Vendor performance" data-export="Procurement Reports"><span>Vendor performance metrics</span></label>
+      <label><input type="checkbox" value="AP aging" data-export="Procurement Reports"><span>AP aging</span></label>
+      <label><input type="checkbox" value="Payment forecast" data-export="Procurement Reports"><span>Payment forecast</span></label>
+      <label><input type="checkbox" value="Budget vs actual" data-export="Procurement Reports"><span>Budget vs. actual spend</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>What metrics do you track for vendor performance?</label>
+    <textarea data-export="Vendor Performance Metrics" placeholder="e.g., On-time delivery, quality (defect rate), price variance, compliance, responsiveness"></textarea>
+  </div>
+
+  <div class="field">
+    <label>Do you need spend analysis by department/business unit?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="spend_analysis" value="Yes" data-export="Spend Analysis"><span>Yes</span></label>
+      <label><input type="radio" name="spend_analysis" value="No" data-export="Spend Analysis"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>How frequently are procurement reports needed?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="report_freq" value="Daily" data-export="Procurement Report Frequency"><span>Daily</span></label>
+      <label><input type="radio" name="report_freq" value="Weekly" data-export="Procurement Report Frequency"><span>Weekly</span></label>
+      <label><input type="radio" name="report_freq" value="Monthly" data-export="Procurement Report Frequency"><span>Monthly</span></label>
+      <label><input type="radio" name="report_freq" value="As needed" data-export="Procurement Report Frequency"><span>As needed</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>What KPIs are most important to monitor?</label>
+    <textarea data-export="Procurement KPIs" placeholder="e.g., Days Payable Outstanding (DPO), procurement cycle time, invoice accuracy, cost savings"></textarea>
+  </div>
+</div>
+
+<!-- SECTION 9: Current Process & Pain Points -->
+<div class="section">
+  <h2>9. Current Procurement Process & Pain Points</h2>
+  <p class="section-desc">Existing systems, manual processes, and bottlenecks.</p>
+
+  <div class="field">
+    <label class="required">What system is currently used for procurement?</label>
+    <input type="text" data-export="Current Procurement System" placeholder="e.g., SAP, Oracle, QuickBooks, spreadsheets, Ariba">
+  </div>
+
+  <div class="field">
+    <label>How long have you been on the current system?</label>
+    <input type="text" data-export="Current System Duration" placeholder="e.g., 3 years">
+  </div>
+
+  <div class="field">
+    <label>What manual processes exist in your procurement workflow?</label>
+    <textarea data-export="Manual Processes" placeholder="e.g., Manual PO creation, email-based approvals, manual bill entry, spreadsheet tracking"></textarea>
+  </div>
+
+  <div class="field">
+    <label>What are the top pain points with current procurement processes?</label>
+    <textarea data-export="Procurement Pain Points" placeholder="e.g., Lack of visibility, slow approval cycles, duplicate payments, poor vendor data, compliance gaps"></textarea>
+  </div>
+
+  <div class="field">
+    <label>Are there compliance or regulatory requirements for procurement?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Segregation of duties" data-export="Procurement Compliance"><span>Segregation of duties</span></label>
+      <label><input type="checkbox" value="Audit trail" data-export="Procurement Compliance"><span>Audit trail requirements</span></label>
+      <label><input type="checkbox" value="Competitive bidding" data-export="Procurement Compliance"><span>Competitive bidding</span></label>
+      <label><input type="checkbox" value="Government contracting" data-export="Procurement Compliance"><span>Government contracting</span></label>
+      <label><input type="checkbox" value="Industry standards" data-export="Procurement Compliance"><span>Industry standards (ISO, etc.)</span></label>
+      <label><input type="checkbox" value="None" data-export="Procurement Compliance"><span>None / Not applicable</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>What are the current system bottlenecks or failures?</label>
+    <textarea data-export="System Bottlenecks" placeholder="e.g., Slow processing, frequent errors, poor integration, limited reporting"></textarea>
+  </div>
+</div>
+
+<!-- SECTION 10: Additional Requirements -->
+<div class="section">
+  <h2>10. Additional Requirements & Integrations</h2>
+  <p class="section-desc">Custom fields, integrations, and special requirements.</p>
+
+  <div class="field">
+    <label>Do you need custom fields for procurement?</label>
+    <textarea data-export="Custom Fields" placeholder="e.g., Project code, cost center, commodity code, internal order number, approval ID"></textarea>
+  </div>
+
+  <div class="field">
+    <label>What integrations are needed with procurement?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="EDI" data-export="Procurement Integrations"><span>EDI (vendor orders/invoices)</span></label>
+      <label><input type="checkbox" value="Punchout catalogs" data-export="Procurement Integrations"><span>Punchout catalogs (Ariba, etc.)</span></label>
+      <label><input type="checkbox" value="AP automation" data-export="Procurement Integrations"><span>AP automation (Coupa, Jaggr, etc.)</span></label>
+      <label><input type="checkbox" value="Expense management" data-export="Procurement Integrations"><span>Expense mgmt (Expensify, Concur)</span></label>
+      <label><input type="checkbox" value="Bank feed" data-export="Procurement Integrations"><span>Bank feed (for virtual cards)</span></label>
+      <label><input type="checkbox" value="CRM" data-export="Procurement Integrations"><span>CRM (Salesforce)</span></label>
+      <label><input type="checkbox" value="ERP modules" data-export="Procurement Integrations"><span>Other ERP modules</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you have procurement policies or guidelines?</label>
+    <textarea data-export="Procurement Policies" placeholder="e.g., Preferred vendor list, sourcing policies, pricing guidelines, contract review process"></textarea>
+  </div>
+
+  <div class="field">
+    <label>Are there specific procurement training or change management needs?</label>
+    <textarea data-export="Training Needs" placeholder="e.g., Procurement staff training, user adoption, process change management"></textarea>
+  </div>
+
+  <div class="field">
+    <label>Any other notes or special requirements</label>
+    <textarea data-export="Additional Notes" placeholder="Capture any other requirements or considerations for the Procure to Pay implementation"></textarea>
+  </div>
+
+  <div class="field">
+    <label>What is the timeline for NetSuite implementation?</label>
+    <textarea data-export="Implementation Timeline" placeholder="e.g., 6 months, phased approach, go-live date, parallel run period"></textarea>
+  </div>
+</div>
+
+</div><!-- end container -->
+
+<div class="btn-bar">
+  <button class="btn btn-secondary" onclick="clearForm()">Clear Form</button>
+  <button class="btn btn-primary" onclick="exportToExcel()">Export to Excel</button>
+  <button class="btn btn-drive" id="btnDrive" onclick="saveToDrive()" disabled title="Loading Google Drive..."><span class="drive-icon">📁</span> Save to Google Drive</button>
+</div>
+
+<div class="toast" id="toast">Exported successfully!</div>
+
+<script>
+// Track progress
+function updateProgress() {
+  const fields = document.querySelectorAll('input[type="text"], input[type="number"], input[type="date"], select, textarea');
+  const radios = {};
+  document.querySelectorAll('input[type="radio"]').forEach(r => { if(r.checked) radios[r.name] = true; });
+  const checkboxes = {};
+  document.querySelectorAll('input[type="checkbox"]').forEach(c => { if(c.checked) checkboxes[c.closest('.field')?.querySelector('label')?.textContent || 'x'] = true; });
+  let filled = 0, total = 0;
+  fields.forEach(f => { total++; if(f.value.trim()) filled++; });
+  const radioGroups = new Set();
+  document.querySelectorAll('input[type="radio"]').forEach(r => radioGroups.add(r.name));
+  total += radioGroups.size;
+  filled += Object.keys(radios).length;
+  const pct = total > 0 ? Math.round((filled / total) * 100) : 0;
+  document.getElementById('progressPct').textContent = pct + '%';
+  document.getElementById('progressFill').style.width = pct + '%';
+}
+document.addEventListener('input', updateProgress);
+document.addEventListener('change', updateProgress);
+
+function exportToExcel() {
+  const data = [];
+  const sections = document.querySelectorAll('.section, .meta-section');
+  sections.forEach(section => {
+    const sectionTitle = section.querySelector('h2')?.textContent || '';
+    const fields = section.querySelectorAll('.field');
+    fields.forEach(field => {
+      const label = field.querySelector('label')?.textContent?.replace(' *', '') || '';
+      let value = '';
+      const input = field.querySelector('input[type="text"], input[type="number"], input[type="date"], select, textarea');
+      if (input) { value = input.value; }
+      const checkedRadio = field.querySelector('input[type="radio"]:checked');
+      if (checkedRadio) { value = checkedRadio.value; }
+      const checkedBoxes = field.querySelectorAll('input[type="checkbox"]:checked');
+      if (checkedBoxes.length > 0) { value = Array.from(checkedBoxes).map(c => c.value).join(', '); }
+      data.push({ 'Section': sectionTitle, 'Question': label, 'Response': value });
+    });
+  });
+  const ws = XLSX.utils.json_to_sheet(data);
+  ws['!cols'] = [{ wch: 30 }, { wch: 60 }, { wch: 60 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Procure to Pay');
+  const clientName = document.querySelector('[data-export="Client Name"]')?.value || 'Client';
+  const date = new Date().toISOString().split('T')[0];
+  XLSX.writeFile(wb, `${clientName}_Procure-to-Pay_${date}.xlsx`);
+  showToast();
+}
+
+function clearForm() {
+  if (confirm('Are you sure you want to clear all fields?')) {
+    document.querySelectorAll('input[type="text"], input[type="number"], input[type="date"], textarea').forEach(f => f.value = '');
+    document.querySelectorAll('select').forEach(s => s.selectedIndex = 0);
+    document.querySelectorAll('input[type="radio"], input[type="checkbox"]').forEach(c => c.checked = false);
+    updateProgress();
+  }
+}
+
+function showToast() {
+  const t = document.getElementById('toast');
+  t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 2500);
+}
+</script>
+</body>
+</html>

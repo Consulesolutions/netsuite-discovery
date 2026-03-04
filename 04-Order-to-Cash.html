@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NetSuite Discovery: Order to Cash</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #f0f2f5; color: #1a1a2e; line-height: 1.6; }
+.header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); color: white; padding: 40px 20px; text-align: center; }
+.header h1 { font-size: 28px; margin-bottom: 8px; }
+.header p { opacity: 0.85; font-size: 15px; max-width: 600px; margin: 0 auto; }
+.container { max-width: 900px; margin: 30px auto; padding: 0 20px 60px; }
+.meta-section { background: white; border-radius: 12px; padding: 30px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.meta-section h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #0f3460; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #e8ecf1; }
+.section { background: white; border-radius: 12px; padding: 30px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.section h2 { font-size: 20px; color: #0f3460; margin-bottom: 6px; }
+.section .section-desc { color: #666; font-size: 14px; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 2px solid #e8ecf1; }
+.field { margin-bottom: 20px; }
+.field label { display: block; font-weight: 600; font-size: 14px; margin-bottom: 6px; color: #333; }
+.field .hint { font-size: 12px; color: #888; margin-bottom: 6px; font-style: italic; }
+.field input[type="text"], .field input[type="number"], .field input[type="date"], .field select, .field textarea {
+  width: 100%; padding: 10px 14px; border: 1.5px solid #d1d5db; border-radius: 8px; font-size: 14px; font-family: inherit; transition: border-color 0.2s; background: #fafbfc;
+}
+.field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: #0f3460; background: white; box-shadow: 0 0 0 3px rgba(15,52,96,0.08); }
+.field textarea { min-height: 80px; resize: vertical; }
+.radio-group, .checkbox-group { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 6px; }
+.radio-group label, .checkbox-group label { font-weight: 400; display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 6px 14px; border: 1.5px solid #d1d5db; border-radius: 8px; font-size: 14px; transition: all 0.2s; background: #fafbfc; }
+.radio-group label:hover, .checkbox-group label:hover { border-color: #0f3460; background: #f0f4ff; }
+.radio-group input:checked + span, .checkbox-group input:checked + span { color: #0f3460; font-weight: 600; }
+.radio-group label:has(input:checked), .checkbox-group label:has(input:checked) { border-color: #0f3460; background: #eef2ff; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 600px) { .grid-2 { grid-template-columns: 1fr; } }
+.btn-bar { position: sticky; bottom: 0; background: white; padding: 16px 20px; border-top: 1px solid #e5e7eb; display: flex; justify-content: center; gap: 12px; z-index: 10; }
+.btn { padding: 12px 32px; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+.btn-primary { background: #0f3460; color: white; }
+.btn-primary:hover { background: #1a4a7a; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(15,52,96,0.3); }
+.btn-secondary { background: #e8ecf1; color: #0f3460; }
+.btn-drive { background: #1a73e8; color: white; display: flex; align-items: center; gap: 8px; }
+.btn-drive:hover { background: #1557b0; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(26,115,232,0.3); }
+.btn-drive:disabled { background: #93c5fd; cursor: wait; }
+.drive-icon { font-size: 18px; }
+.btn-secondary:hover { background: #d1d8e4; }
+.required::after { content: ' *'; color: #e53e3e; }
+.progress-bar { background: #e8ecf1; height: 6px; border-radius: 3px; margin: 20px 0; overflow: hidden; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, #0f3460, #4a90d9); border-radius: 3px; transition: width 0.5s ease; }
+.progress-text { text-align: center; font-size: 13px; color: #666; margin-bottom: 10px; }
+.toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: #10b981; color: white; padding: 12px 24px; border-radius: 8px; font-weight: 600; z-index: 100; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+</style>
+<script src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
+<script src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
+<script src="drive-upload.js"></script>
+</head>
+<body>
+
+<div class="header">
+  <a href="index.html" style="color:rgba(255,255,255,0.7);text-decoration:none;font-size:13px;display:inline-block;margin-bottom:10px;">&larr; Back to all forms</a>
+  <h1>Order to Cash</h1>
+  <p>NetSuite ERP Discovery Questionnaire — Sales Orders, Fulfillment, Invoicing, AR, and Revenue Recognition</p>
+</div>
+
+<div class="container">
+
+<div class="meta-section">
+  <h2>Session Information</h2>
+  <div class="grid-2">
+    <div class="field"><label class="required">Client / Company Name</label><input type="text" data-export="Client Name"></div>
+    <div class="field"><label class="required">Completed By</label><input type="text" data-export="Completed By"></div>
+    <div class="field"><label>Date</label><input type="date" data-export="Date"></div>
+    <div class="field"><label>Session Attendees</label><input type="text" data-export="Attendees" placeholder="Names and roles"></div>
+  </div>
+</div>
+
+<div class="progress-text">Completion: <span id="progressPct">0%</span></div>
+<div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+
+<!-- SECTION 1: Customer Management -->
+<div class="section">
+  <h2>1. Customer Management</h2>
+  <p class="section-desc">Understanding customer data structures, hierarchies, terms, and credit management.</p>
+
+  <div class="field">
+    <label class="required">Approximately how many active customers do you have?</label>
+    <input type="number" data-export="Active Customer Count" placeholder="e.g., 2500">
+  </div>
+
+  <div class="field">
+    <label>How do you categorize / segment customers?</label>
+    <textarea data-export="Customer Categorization" placeholder="e.g., by industry, geography, account type, sales region, customer tier (Gold/Silver/Bronze)"></textarea>
+  </div>
+
+  <div class="field">
+    <label>Do you have a customer hierarchy (parent-child relationships)?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="customer_hierarchy" value="Yes" data-export="Customer Hierarchy"><span>Yes</span></label>
+      <label><input type="radio" name="customer_hierarchy" value="No" data-export="Customer Hierarchy"><span>No</span></label>
+      <label><input type="radio" name="customer_hierarchy" value="Planned" data-export="Customer Hierarchy"><span>Planned</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>How do you manage customer credit limits?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="credit_limits" value="Hard limit - block orders" data-export="Credit Limit Management"><span>Hard limit - block orders</span></label>
+      <label><input type="radio" name="credit_limits" value="Soft limit - alert only" data-export="Credit Limit Management"><span>Soft limit - alert only</span></label>
+      <label><input type="radio" name="credit_limits" value="No limits" data-export="Credit Limit Management"><span>No limits</span></label>
+      <label><input type="radio" name="credit_limits" value="Varies by customer" data-export="Credit Limit Management"><span>Varies by customer</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do customers have different payment terms?</label>
+    <textarea data-export="Customer Payment Terms" placeholder="e.g., Net 30, Net 60, 2/10 Net 30, COD, Pre-payment — describe your standard and special terms"></textarea>
+  </div>
+
+  <div class="field">
+    <label>Do you offer a customer portal?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="customer_portal" value="Yes" data-export="Customer Portal"><span>Yes - current system</span></label>
+      <label><input type="radio" name="customer_portal" value="Plan to" data-export="Customer Portal"><span>Plan to implement</span></label>
+      <label><input type="radio" name="customer_portal" value="No" data-export="Customer Portal"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>What functionality does the portal need?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Order Status" data-export="Portal Features"><span>Order Status</span></label>
+      <label><input type="checkbox" value="Invoice View/Download" data-export="Portal Features"><span>Invoice View/Download</span></label>
+      <label><input type="checkbox" value="Payment Status" data-export="Portal Features"><span>Payment Status</span></label>
+      <label><input type="checkbox" value="Self-Service Ordering" data-export="Portal Features"><span>Self-Service Ordering</span></label>
+      <label><input type="checkbox" value="Account Management" data-export="Portal Features"><span>Account Management</span></label>
+      <label><input type="checkbox" value="Shipping Tracking" data-export="Portal Features"><span>Shipping Tracking</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you have tax-exempt customers? If yes, how many and what percentage?</label>
+    <textarea data-export="Tax Exempt Customers" placeholder="e.g., 50 tax-exempt accounts, ~5% of customer base, primarily government and non-profit"></textarea>
+  </div>
+</div>
+
+<!-- SECTION 2: Quotes & Estimates -->
+<div class="section">
+  <h2>2. Quotes & Estimates</h2>
+  <p class="section-desc">Quote processes, approval workflows, and quote-to-order conversion.</p>
+
+  <div class="field">
+    <label class="required">What is your quote process?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="quote_process" value="Formal quotes - standard" data-export="Quote Process"><span>Formal quotes - standard process</span></label>
+      <label><input type="radio" name="quote_process" value="Formal quotes - complex" data-export="Quote Process"><span>Formal quotes - complex customization</span></label>
+      <label><input type="radio" name="quote_process" value="Informal estimates" data-export="Quote Process"><span>Informal estimates</span></label>
+      <label><input type="radio" name="quote_process" value="No quotes" data-export="Quote Process"><span>No quoting process</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do quotes require approval before being sent to customers?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="quote_approval" value="Yes - always" data-export="Quote Approval Required"><span>Yes - always</span></label>
+      <label><input type="radio" name="quote_approval" value="Yes - over threshold" data-export="Quote Approval Required"><span>Yes - over certain amount</span></label>
+      <label><input type="radio" name="quote_approval" value="No" data-export="Quote Approval Required"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>What is the quote validity / expiration period?</label>
+    <input type="text" data-export="Quote Expiration" placeholder="e.g., 30 days, 60 days, no expiration">
+  </div>
+
+  <div class="field">
+    <label>How is quote-to-order conversion handled?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="quote_to_order" value="Automatic" data-export="Quote to Order Conversion"><span>Automatic conversion</span></label>
+      <label><input type="radio" name="quote_to_order" value="Manual - customer accepts" data-export="Quote to Order Conversion"><span>Manual - customer accepts</span></label>
+      <label><input type="radio" name="quote_to_order" value="Manual - sales team" data-export="Quote to Order Conversion"><span>Manual - sales team converts</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you track quote metrics?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Win/Loss" data-export="Quote Metrics"><span>Win/Loss rates</span></label>
+      <label><input type="checkbox" value="Quote to Order" data-export="Quote Metrics"><span>Quote to Order ratio</span></label>
+      <label><input type="checkbox" value="Average quote value" data-export="Quote Metrics"><span>Average quote value</span></label>
+      <label><input type="checkbox" value="Competitor tracking" data-export="Quote Metrics"><span>Competitor tracking</span></label>
+      <label><input type="checkbox" value="Quote cycle time" data-export="Quote Metrics"><span>Quote cycle time</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you use quote templates?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="quote_templates" value="Yes - multiple" data-export="Quote Templates"><span>Yes - multiple templates</span></label>
+      <label><input type="radio" name="quote_templates" value="Yes - one standard" data-export="Quote Templates"><span>Yes - one standard template</span></label>
+      <label><input type="radio" name="quote_templates" value="No" data-export="Quote Templates"><span>No templates</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Any other quote requirements or notes</label>
+    <textarea data-export="Quote Additional Notes" placeholder="e.g., specific approval hierarchies, document formats, branding requirements"></textarea>
+  </div>
+</div>
+
+<!-- SECTION 3: Sales Orders -->
+<div class="section">
+  <h2>3. Sales Orders</h2>
+  <p class="section-desc">Order entry, order types, workflows, and pricing controls.</p>
+
+  <div class="field">
+    <label class="required">What are your order entry channels?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Manual entry" data-export="Order Entry Channels"><span>Manual entry</span></label>
+      <label><input type="checkbox" value="EDI/API" data-export="Order Entry Channels"><span>EDI/API integration</span></label>
+      <label><input type="checkbox" value="Ecommerce" data-export="Order Entry Channels"><span>Ecommerce platform</span></label>
+      <label><input type="checkbox" value="Marketplace" data-export="Order Entry Channels"><span>Marketplace (Amazon, etc.)</span></label>
+      <label><input type="checkbox" value="CRM" data-export="Order Entry Channels"><span>CRM/Sales system</span></label>
+      <label><input type="checkbox" value="Mobile/App" data-export="Order Entry Channels"><span>Mobile/App</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>What order types do you have?</label>
+    <textarea data-export="Order Types" placeholder="e.g., Standard sales, Recurring subscription, Drop-ship, Special order, Rush order, sample/trial"></textarea>
+  </div>
+
+  <div class="field">
+    <label class="required">Do sales orders require approval before fulfillment?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="order_approval" value="Yes - all" data-export="Order Approval Required"><span>Yes - all orders</span></label>
+      <label><input type="radio" name="order_approval" value="Yes - threshold" data-export="Order Approval Required"><span>Yes - over certain amount</span></label>
+      <label><input type="radio" name="order_approval" value="No" data-export="Order Approval Required"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>How are discounts applied to orders?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Item-level" data-export="Discount Methods"><span>Item-level discounts</span></label>
+      <label><input type="checkbox" value="Order-level" data-export="Discount Methods"><span>Order-level discounts</span></label>
+      <label><input type="checkbox" value="Volume discounts" data-export="Discount Methods"><span>Volume-based discounts</span></label>
+      <label><input type="checkbox" value="Promotional" data-export="Discount Methods"><span>Promotional discounts</span></label>
+      <label><input type="checkbox" value="Customer-level" data-export="Discount Methods"><span>Customer/category discounts</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>How many pricing levels / price lists do you maintain?</label>
+    <input type="number" data-export="Price List Count" placeholder="e.g., 5 lists for different customer tiers">
+  </div>
+
+  <div class="field">
+    <label>Do orders get placed on hold? What triggers a hold?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Credit limit exceeded" data-export="Order Hold Triggers"><span>Credit limit exceeded</span></label>
+      <label><input type="checkbox" value="Overdue invoices" data-export="Order Hold Triggers"><span>Overdue invoices</span></label>
+      <label><input type="checkbox" value="Inventory unavailable" data-export="Order Hold Triggers"><span>Inventory unavailable</span></label>
+      <label><input type="checkbox" value="Manual review" data-export="Order Hold Triggers"><span>Manual review required</span></label>
+      <label><input type="checkbox" value="No holds" data-export="Order Hold Triggers"><span>No holds - auto-process</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you have complex pricing rules or special order processing?</label>
+    <textarea data-export="Complex Pricing/Rules" placeholder="e.g., tiered pricing, time-limited promotions, bundle discounts, location-specific pricing"></textarea>
+  </div>
+</div>
+
+<!-- SECTION 4: Fulfillment & Shipping -->
+<div class="section">
+  <h2>4. Fulfillment & Shipping</h2>
+  <p class="section-desc">Pick, pack, ship processes, carrier integrations, and fulfillment models.</p>
+
+  <div class="field">
+    <label class="required">What is your fulfillment process?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="fulfillment_process" value="Pick-Pack-Ship from warehouse" data-export="Fulfillment Process"><span>Pick-Pack-Ship from warehouse</span></label>
+      <label><input type="radio" name="fulfillment_process" value="Drop-ship only" data-export="Fulfillment Process"><span>Drop-ship only</span></label>
+      <label><input type="radio" name="fulfillment_process" value="Hybrid" data-export="Fulfillment Process"><span>Hybrid (warehouse + drop-ship)</span></label>
+      <label><input type="radio" name="fulfillment_process" value="Third-party logistics" data-export="Fulfillment Process"><span>Third-party logistics (3PL)</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>How many fulfillment locations / warehouses do you have?</label>
+    <input type="number" data-export="Fulfillment Locations" placeholder="e.g., 3 regional warehouses">
+  </div>
+
+  <div class="field">
+    <label>What shipping methods do you offer?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Standard ground" data-export="Shipping Methods"><span>Standard ground</span></label>
+      <label><input type="checkbox" value="Expedited" data-export="Shipping Methods"><span>Expedited/Express</span></label>
+      <label><input type="checkbox" value="Overnight" data-export="Shipping Methods"><span>Overnight</span></label>
+      <label><input type="checkbox" value="International" data-export="Shipping Methods"><span>International</span></label>
+      <label><input type="checkbox" value="Freight" data-export="Shipping Methods"><span>Freight/LTL</span></label>
+      <label><input type="checkbox" value="Pickup" data-export="Shipping Methods"><span>Customer Pickup</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>What carrier integrations do you need?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="UPS" data-export="Carrier Integrations"><span>UPS</span></label>
+      <label><input type="checkbox" value="FedEx" data-export="Carrier Integrations"><span>FedEx</span></label>
+      <label><input type="checkbox" value="USPS" data-export="Carrier Integrations"><span>USPS</span></label>
+      <label><input type="checkbox" value="DHL" data-export="Carrier Integrations"><span>DHL</span></label>
+      <label><input type="checkbox" value="Freight Carriers" data-export="Carrier Integrations"><span>Freight Carriers</span></label>
+      <label><input type="checkbox" value="Multi-carrier" data-export="Carrier Integrations"><span>Multi-carrier platform</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you support partial shipments?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="partial_shipments" value="Yes - standard" data-export="Partial Shipments"><span>Yes - standard practice</span></label>
+      <label><input type="radio" name="partial_shipments" value="Yes - special cases" data-export="Partial Shipments"><span>Yes - only in special cases</span></label>
+      <label><input type="radio" name="partial_shipments" value="No" data-export="Partial Shipments"><span>No - ship complete or hold</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>How do you handle back orders and inventory allocation?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="back_orders" value="FIFO allocation" data-export="Back Order Management"><span>FIFO allocation</span></label>
+      <label><input type="radio" name="back_orders" value="Priority/special orders first" data-export="Back Order Management"><span>Priority/special orders first</span></label>
+      <label><input type="radio" name="back_orders" value="Manual allocation" data-export="Back Order Management"><span>Manual allocation</span></label>
+      <label><input type="radio" name="back_orders" value="Cancel unavailable" data-export="Back Order Management"><span>Cancel unavailable items</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you do drop-shipping? If yes, describe the process</label>
+    <textarea data-export="Drop Ship Details" placeholder="e.g., percentage of orders, supplier integration method, how invoices are handled"></textarea>
+  </div>
+
+  <div class="field">
+    <label>Do you need to track units in packing (FIFO, FEFO, expiration dates)?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="lot_tracking" value="FIFO/FEFO" data-export="Lot Tracking"><span>FIFO/FEFO lot tracking</span></label>
+      <label><input type="radio" name="lot_tracking" value="Serial numbers" data-export="Lot Tracking"><span>Serial number tracking</span></label>
+      <label><input type="radio" name="lot_tracking" value="Expiration dates" data-export="Lot Tracking"><span>Expiration date tracking</span></label>
+      <label><input type="radio" name="lot_tracking" value="No tracking" data-export="Lot Tracking"><span>No lot tracking</span></label>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 5: Invoicing & Billing -->
+<div class="section">
+  <h2>5. Invoicing & Billing</h2>
+  <p class="section-desc">Invoice generation, delivery methods, and special billing arrangements.</p>
+
+  <div class="field">
+    <label class="required">When are invoices generated?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="invoice_timing" value="At order confirmation" data-export="Invoice Generation Timing"><span>At order confirmation</span></label>
+      <label><input type="radio" name="invoice_timing" value="At shipment" data-export="Invoice Generation Timing"><span>At shipment/fulfillment</span></label>
+      <label><input type="radio" name="invoice_timing" value="Manual - variable" data-export="Invoice Generation Timing"><span>Manual - as needed</span></label>
+      <label><input type="radio" name="invoice_timing" value="Batch process" data-export="Invoice Generation Timing"><span>Batch process - daily/weekly</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>How do you deliver invoices to customers?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Email" data-export="Invoice Delivery"><span>Email</span></label>
+      <label><input type="checkbox" value="Print/Mail" data-export="Invoice Delivery"><span>Print/Mail</span></label>
+      <label><input type="checkbox" value="Customer portal" data-export="Invoice Delivery"><span>Customer portal</span></label>
+      <label><input type="checkbox" value="EDI" data-export="Invoice Delivery"><span>EDI</span></label>
+      <label><input type="checkbox" value="Multi-method" data-export="Invoice Delivery"><span>Multi-method by customer</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you have recurring / subscription billing?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="recurring_billing" value="Yes - significant" data-export="Recurring Billing"><span>Yes - significant volume</span></label>
+      <label><input type="radio" name="recurring_billing" value="Yes - limited" data-export="Recurring Billing"><span>Yes - limited</span></label>
+      <label><input type="radio" name="recurring_billing" value="No" data-export="Recurring Billing"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you do milestone or progress billing?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="milestone_billing" value="Yes - common" data-export="Milestone Billing"><span>Yes - common for our business</span></label>
+      <label><input type="radio" name="milestone_billing" value="Yes - occasional" data-export="Milestone Billing"><span>Yes - occasional projects</span></label>
+      <label><input type="radio" name="milestone_billing" value="No" data-export="Milestone Billing"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you consolidate invoices for customers with multiple orders?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="consolidated_invoices" value="Yes - daily" data-export="Invoice Consolidation"><span>Yes - daily</span></label>
+      <label><input type="radio" name="consolidated_invoices" value="Yes - weekly/monthly" data-export="Invoice Consolidation"><span>Yes - weekly/monthly</span></label>
+      <label><input type="radio" name="consolidated_invoices" value="No - per shipment" data-export="Invoice Consolidation"><span>No - per shipment/order</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you use invoice templates? How many?</label>
+    <input type="number" data-export="Invoice Template Count" placeholder="e.g., 3 different templates">
+  </div>
+
+  <div class="field">
+    <label>What custom fields or information are required on invoices?</label>
+    <textarea data-export="Invoice Custom Fields" placeholder="e.g., PO numbers, cost center codes, project codes, department numbers"></textarea>
+  </div>
+</div>
+
+<!-- SECTION 6: Revenue Recognition -->
+<div class="section">
+  <h2>6. Revenue Recognition</h2>
+  <p class="section-desc">ASC 606 compliance, revenue recognition methods, and deferred revenue handling.</p>
+
+  <div class="field">
+    <label class="required">What revenue recognition method do you use?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="rev_rec_method" value="Point in time - shipment" data-export="Rev Rec Method"><span>Point in time - shipment</span></label>
+      <label><input type="radio" name="rev_rec_method" value="Point in time - delivery" data-export="Rev Rec Method"><span>Point in time - delivery</span></label>
+      <label><input type="radio" name="rev_rec_method" value="Point in time - performance" data-export="Rev Rec Method"><span>Point in time - performance obligation</span></label>
+      <label><input type="radio" name="rev_rec_method" value="Over time" data-export="Rev Rec Method"><span>Over time - service/subscription</span></label>
+      <label><input type="radio" name="rev_rec_method" value="Mixed" data-export="Rev Rec Method"><span>Mixed methods</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Are you subject to ASC 606 (IFRS 15) requirements?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="asc606" value="Yes" data-export="ASC 606 Compliance"><span>Yes</span></label>
+      <label><input type="radio" name="asc606" value="No - private company" data-export="ASC 606 Compliance"><span>No - private company</span></label>
+      <label><input type="radio" name="asc606" value="Partial - specific products" data-export="ASC 606 Compliance"><span>Partial - specific products</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you have contract-based revenue recognition (complex contracts)?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="complex_contracts" value="Yes - significant" data-export="Complex Contracts"><span>Yes - significant portion</span></label>
+      <label><input type="radio" name="complex_contracts" value="Yes - limited" data-export="Complex Contracts"><span>Yes - limited</span></label>
+      <label><input type="radio" name="complex_contracts" value="No" data-export="Complex Contracts"><span>No - standard transactions</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>How much revenue is deferred (subscriptions, service contracts, etc.)?</label>
+    <textarea data-export="Deferred Revenue" placeholder="e.g., ~30% of annual revenue is deferred across 12-36 month contracts"></textarea>
+  </div>
+
+  <div class="field">
+    <label>How is fair value / performance obligation allocation handled?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="fair_value_alloc" value="Standalone selling price" data-export="Fair Value Allocation"><span>Standalone selling price method</span></label>
+      <label><input type="radio" name="fair_value_alloc" value="Adjusted market assessment" data-export="Fair Value Allocation"><span>Adjusted market assessment</span></label>
+      <label><input type="radio" name="fair_value_alloc" value="Residual method" data-export="Fair Value Allocation"><span>Residual method</span></label>
+      <label><input type="radio" name="fair_value_alloc" value="Not applicable" data-export="Fair Value Allocation"><span>Not applicable</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you have revenue recognition schedules for deferred revenue?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="rev_rec_schedule" value="Manual" data-export="Rev Rec Schedule"><span>Manual schedules</span></label>
+      <label><input type="radio" name="rev_rec_schedule" value="System-generated" data-export="Rev Rec Schedule"><span>System-generated / automated</span></label>
+      <label><input type="radio" name="rev_rec_schedule" value="Third-party ASC 606" data-export="Rev Rec Schedule"><span>Third-party ASC 606 tool</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Any special rev rec scenarios (warranties, returns, etc.)</label>
+    <textarea data-export="Special Rev Rec Scenarios" placeholder="e.g., warranty provisions, return allowances, variable consideration constraints"></textarea>
+  </div>
+</div>
+
+<!-- SECTION 7: Accounts Receivable -->
+<div class="section">
+  <h2>7. Accounts Receivable</h2>
+  <p class="section-desc">Payment application, collections, customer statements, and write-offs.</p>
+
+  <div class="field">
+    <label class="required">How do you currently apply customer payments?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="payment_application" value="Automatic by date" data-export="Payment Application"><span>Automatic by invoice date</span></label>
+      <label><input type="radio" name="payment_application" value="Automatic by amount" data-export="Payment Application"><span>Automatic by amount match</span></label>
+      <label><input type="radio" name="payment_application" value="Manual" data-export="Payment Application"><span>Manual application</span></label>
+      <label><input type="radio" name="payment_application" value="Mixed" data-export="Payment Application"><span>Mixed - depends on payment type</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you have a dunning / collections process?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="dunning" value="Yes - automated" data-export="Dunning Process"><span>Yes - automated</span></label>
+      <label><input type="radio" name="dunning" value="Yes - manual" data-export="Dunning Process"><span>Yes - manual</span></label>
+      <label><input type="radio" name="dunning" value="Limited" data-export="Dunning Process"><span>Limited collections process</span></label>
+      <label><input type="radio" name="dunning" value="No" data-export="Dunning Process"><span>No formal process</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>What AR aging metrics do you track?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="30-60-90+" data-export="AR Aging Metrics"><span>30-60-90+ days</span></label>
+      <label><input type="checkbox" value="Current/Past Due" data-export="AR Aging Metrics"><span>Current/Past Due</span></label>
+      <label><input type="checkbox" value="By customer" data-export="AR Aging Metrics"><span>By customer</span></label>
+      <label><input type="checkbox" value="DSO metrics" data-export="AR Aging Metrics"><span>DSO (Days Sales Outstanding)</span></label>
+      <label><input type="checkbox" value="Concentration analysis" data-export="AR Aging Metrics"><span>Concentration analysis</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you generate customer statements?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="customer_statements" value="Monthly - automatic" data-export="Customer Statements"><span>Monthly - automatic</span></label>
+      <label><input type="radio" name="customer_statements" value="On demand" data-export="Customer Statements"><span>On demand</span></label>
+      <label><input type="radio" name="customer_statements" value="No" data-export="Customer Statements"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>How do you handle bad debt / write-offs?</label>
+    <textarea data-export="Bad Debt Process" placeholder="e.g., allowance method, write-off approval process, collection agency referral"></textarea>
+  </div>
+
+  <div class="field">
+    <label>Do customers make deposits or prepayments?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="customer_deposits" value="Yes - significant" data-export="Customer Deposits"><span>Yes - significant portion</span></label>
+      <label><input type="radio" name="customer_deposits" value="Yes - limited" data-export="Customer Deposits"><span>Yes - limited</span></label>
+      <label><input type="radio" name="customer_deposits" value="No" data-export="Customer Deposits"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>How are customer deposits / prepayments handled?</label>
+    <textarea data-export="Deposit Handling" placeholder="e.g., held as customer deposit liability, deferred revenue, applied to first order"></textarea>
+  </div>
+</div>
+
+<!-- SECTION 8: Returns & Credits -->
+<div class="section">
+  <h2>8. Returns & Credits</h2>
+  <p class="section-desc">Return authorizations, credit memos, and restocking fees.</p>
+
+  <div class="field">
+    <label class="required">Do you have a formal return process?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="return_process" value="RMA required" data-export="Return Process"><span>RMA (Return Merchandise Authorization) required</span></label>
+      <label><input type="radio" name="return_process" value="Simple return" data-export="Return Process"><span>Simple return process</span></label>
+      <label><input type="radio" name="return_process" value="No returns" data-export="Return Process"><span>No returns / as-is</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do RMAs require approval before acceptance?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="rma_approval" value="Yes" data-export="RMA Approval"><span>Yes - always</span></label>
+      <label><input type="radio" name="rma_approval" value="Yes - over threshold" data-export="RMA Approval"><span>Yes - over certain amount</span></label>
+      <label><input type="radio" name="rma_approval" value="No" data-export="RMA Approval"><span>No - automatic acceptance</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>What is your return window / restocking fee policy?</label>
+    <textarea data-export="Return Policy" placeholder="e.g., 30-day return window, 15% restocking fee, exceptions for defects"></textarea>
+  </div>
+
+  <div class="field">
+    <label>How are credit memos generated?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="credit_memo" value="Automatic from RMA" data-export="Credit Memo Generation"><span>Automatic from RMA</span></label>
+      <label><input type="radio" name="credit_memo" value="Manual" data-export="Credit Memo Generation"><span>Manual entry</span></label>
+      <label><input type="radio" name="credit_memo" value="Approval workflow" data-export="Credit Memo Generation"><span>Approval workflow</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you track warranty claims?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="warranty_tracking" value="Yes - detailed" data-export="Warranty Tracking"><span>Yes - detailed tracking</span></label>
+      <label><input type="radio" name="warranty_tracking" value="Yes - basic" data-export="Warranty Tracking"><span>Yes - basic</span></label>
+      <label><input type="radio" name="warranty_tracking" value="No" data-export="Warranty Tracking"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Describe any special return / credit requirements</label>
+    <textarea data-export="Return Additional Notes" placeholder="e.g., repair vs replace options, customer return shipping responsibility, warranty exclusions"></textarea>
+  </div>
+</div>
+
+<!-- SECTION 9: Reporting & Analytics -->
+<div class="section">
+  <h2>9. Reporting & Analytics</h2>
+  <p class="section-desc">Sales reporting, commission tracking, and profitability analysis.</p>
+
+  <div class="field">
+    <label class="required">What sales reports are most important to your business?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Monthly revenue" data-export="Sales Reports"><span>Monthly revenue</span></label>
+      <label><input type="checkbox" value="Sales by rep" data-export="Sales Reports"><span>Sales by rep</span></label>
+      <label><input type="checkbox" value="Sales by product" data-export="Sales Reports"><span>Sales by product/line</span></label>
+      <label><input type="checkbox" value="Sales by customer" data-export="Sales Reports"><span>Sales by customer</span></label>
+      <label><input type="checkbox" value="Sales by region" data-export="Sales Reports"><span>Sales by region</span></label>
+      <label><input type="checkbox" value="Commission reports" data-export="Sales Reports"><span>Commission reports</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you track sales commissions?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="commissions" value="Yes - in NetSuite" data-export="Commission Tracking"><span>Yes - in NetSuite</span></label>
+      <label><input type="radio" name="commissions" value="Yes - external system" data-export="Commission Tracking"><span>Yes - external system</span></label>
+      <label><input type="radio" name="commissions" value="Manual" data-export="Commission Tracking"><span>Manual calculation</span></label>
+      <label><input type="radio" name="commissions" value="No" data-export="Commission Tracking"><span>No commissions</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>What commission structures do you have?</label>
+    <textarea data-export="Commission Structures" placeholder="e.g., % of gross margin, % of revenue, tiered by product, territory-based, exceptions"></textarea>
+  </div>
+
+  <div class="field">
+    <label>Do you need gross margin analysis by product/customer/salesperson?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="margin_analysis" value="Yes" data-export="Margin Analysis"><span>Yes - detailed</span></label>
+      <label><input type="radio" name="margin_analysis" value="Limited" data-export="Margin Analysis"><span>Limited analysis</span></label>
+      <label><input type="radio" name="margin_analysis" value="No" data-export="Margin Analysis"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you need customer profitability analysis?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="customer_profitability" value="Yes" data-export="Customer Profitability"><span>Yes</span></label>
+      <label><input type="radio" name="customer_profitability" value="No" data-export="Customer Profitability"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>What sales analysis dimensions are important?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="By sales rep" data-export="Sales Analysis Dimensions"><span>By sales rep</span></label>
+      <label><input type="checkbox" value="By region" data-export="Sales Analysis Dimensions"><span>By region</span></label>
+      <label><input type="checkbox" value="By product family" data-export="Sales Analysis Dimensions"><span>By product family</span></label>
+      <label><input type="checkbox" value="By customer segment" data-export="Sales Analysis Dimensions"><span>By customer segment</span></label>
+      <label><input type="checkbox" value="By channel" data-export="Sales Analysis Dimensions"><span>By channel</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you need dashboards / real-time sales metrics?</label>
+    <textarea data-export="Dashboard Requirements" placeholder="e.g., daily revenue, pipeline visibility, order backlog, fulfillment status"></textarea>
+  </div>
+</div>
+
+<!-- SECTION 10: Additional Requirements -->
+<div class="section">
+  <h2>10. Additional Requirements</h2>
+  <p class="section-desc">Current OTC system, integrations, compliance, and custom needs.</p>
+
+  <div class="field">
+    <label class="required">What is your current Order-to-Cash system?</label>
+    <textarea data-export="Current OTC System" placeholder="e.g., Shopify for ecommerce + QuickBooks, SAP, custom ERP, spreadsheets"></textarea>
+  </div>
+
+  <div class="field">
+    <label>What are the top 3 pain points with the current system?</label>
+    <textarea data-export="Current System Pain Points" placeholder="Describe the main issues driving NetSuite implementation"></textarea>
+  </div>
+
+  <div class="field">
+    <label>What systems need to integrate with NetSuite for OTC?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Salesforce/CRM" data-export="OTC Integrations"><span>Salesforce/CRM</span></label>
+      <label><input type="checkbox" value="Ecommerce" data-export="OTC Integrations"><span>Ecommerce (Shopify, Magento)</span></label>
+      <label><input type="checkbox" value="Inventory" data-export="OTC Integrations"><span>Inventory system</span></label>
+      <label><input type="checkbox" value="Accounting" data-export="OTC Integrations"><span>Accounting system</span></label>
+      <label><input type="checkbox" value="Warehouse" data-export="OTC Integrations"><span>Warehouse / WMS</span></label>
+      <label><input type="checkbox" value="Payment" data-export="OTC Integrations"><span>Payment processor</span></label>
+      <label><input type="checkbox" value="Shipping" data-export="OTC Integrations"><span>Shipping platform</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you have regulatory / compliance requirements for Order-to-Cash?</label>
+    <textarea data-export="OTC Compliance" placeholder="e.g., SOX compliance, audit trail requirements, encrypted storage, data retention policies"></textarea>
+  </div>
+
+  <div class="field">
+    <label>Do you need custom fields on Sales Orders, Invoices, or Customers?</label>
+    <textarea data-export="Custom Fields" placeholder="List any custom fields needed and their purpose"></textarea>
+  </div>
+
+  <div class="field">
+    <label>What approvals / workflows are critical?</label>
+    <textarea data-export="Critical Workflows" placeholder="e.g., large order approvals, price override approval, credit limit exceptions"></textarea>
+  </div>
+
+  <div class="field">
+    <label>Any other Order-to-Cash requirements or notes</label>
+    <textarea data-export="Additional OTC Notes" placeholder="Capture any other OTC requirements or pain points"></textarea>
+  </div>
+</div>
+
+</div><!-- end container -->
+
+<div class="btn-bar">
+  <button class="btn btn-secondary" onclick="clearForm()">Clear Form</button>
+  <button class="btn btn-primary" onclick="exportToExcel()">Export to Excel</button>
+  <button class="btn btn-drive" id="btnDrive" onclick="saveToDrive()" disabled title="Loading Google Drive..."><span class="drive-icon">📁</span> Save to Google Drive</button>
+</div>
+
+<div class="toast" id="toast">Exported successfully!</div>
+
+<script>
+// Track progress
+function updateProgress() {
+  const fields = document.querySelectorAll('input[type="text"], input[type="number"], input[type="date"], select, textarea');
+  const radios = {};
+  document.querySelectorAll('input[type="radio"]').forEach(r => { if(r.checked) radios[r.name] = true; });
+  const checkboxes = {};
+  document.querySelectorAll('input[type="checkbox"]').forEach(c => { if(c.checked) checkboxes[c.closest('.field')?.querySelector('label')?.textContent || 'x'] = true; });
+  let filled = 0, total = 0;
+  fields.forEach(f => { total++; if(f.value.trim()) filled++; });
+  const radioGroups = new Set();
+  document.querySelectorAll('input[type="radio"]').forEach(r => radioGroups.add(r.name));
+  total += radioGroups.size;
+  filled += Object.keys(radios).length;
+  const pct = total > 0 ? Math.round((filled / total) * 100) : 0;
+  document.getElementById('progressPct').textContent = pct + '%';
+  document.getElementById('progressFill').style.width = pct + '%';
+}
+document.addEventListener('input', updateProgress);
+document.addEventListener('change', updateProgress);
+
+function exportToExcel() {
+  const data = [];
+  const sections = document.querySelectorAll('.section, .meta-section');
+  sections.forEach(section => {
+    const sectionTitle = section.querySelector('h2')?.textContent || '';
+    const fields = section.querySelectorAll('.field');
+    fields.forEach(field => {
+      const label = field.querySelector('label')?.textContent?.replace(' *', '') || '';
+      let value = '';
+      const input = field.querySelector('input[type="text"], input[type="number"], input[type="date"], select, textarea');
+      if (input) { value = input.value; }
+      const checkedRadio = field.querySelector('input[type="radio"]:checked');
+      if (checkedRadio) { value = checkedRadio.value; }
+      const checkedBoxes = field.querySelectorAll('input[type="checkbox"]:checked');
+      if (checkedBoxes.length > 0) { value = Array.from(checkedBoxes).map(c => c.value).join(', '); }
+      data.push({ 'Section': sectionTitle, 'Question': label, 'Response': value });
+    });
+  });
+  const ws = XLSX.utils.json_to_sheet(data);
+  ws['!cols'] = [{ wch: 30 }, { wch: 60 }, { wch: 60 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Order to Cash');
+  const clientName = document.querySelector('[data-export="Client Name"]')?.value || 'Client';
+  const date = new Date().toISOString().split('T')[0];
+  XLSX.writeFile(wb, `${clientName}_Order-to-Cash_${date}.xlsx`);
+  showToast();
+}
+
+function clearForm() {
+  if (confirm('Are you sure you want to clear all fields?')) {
+    document.querySelectorAll('input[type="text"], input[type="number"], input[type="date"], textarea').forEach(f => f.value = '');
+    document.querySelectorAll('select').forEach(s => s.selectedIndex = 0);
+    document.querySelectorAll('input[type="radio"], input[type="checkbox"]').forEach(c => c.checked = false);
+    updateProgress();
+  }
+}
+
+function showToast() {
+  const t = document.getElementById('toast');
+  t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 2500);
+}
+</script>
+</body>
+</html>

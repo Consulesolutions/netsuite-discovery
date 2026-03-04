@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NetSuite Discovery: Demand Planning / MRP</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #f0f2f5; color: #1a1a2e; line-height: 1.6; }
+.header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); color: white; padding: 40px 20px; text-align: center; }
+.header h1 { font-size: 28px; margin-bottom: 8px; }
+.header p { opacity: 0.85; font-size: 15px; max-width: 600px; margin: 0 auto; }
+.container { max-width: 900px; margin: 30px auto; padding: 0 20px 60px; }
+.meta-section { background: white; border-radius: 12px; padding: 30px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.meta-section h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #0f3460; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #e8ecf1; }
+.section { background: white; border-radius: 12px; padding: 30px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.section h2 { font-size: 20px; color: #0f3460; margin-bottom: 6px; }
+.section .section-desc { color: #666; font-size: 14px; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 2px solid #e8ecf1; }
+.field { margin-bottom: 20px; }
+.field label { display: block; font-weight: 600; font-size: 14px; margin-bottom: 6px; color: #333; }
+.field .hint { font-size: 12px; color: #888; margin-bottom: 6px; font-style: italic; }
+.field input[type="text"], .field input[type="number"], .field input[type="date"], .field select, .field textarea {
+  width: 100%; padding: 10px 14px; border: 1.5px solid #d1d5db; border-radius: 8px; font-size: 14px; font-family: inherit; transition: border-color 0.2s; background: #fafbfc;
+}
+.field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: #0f3460; background: white; box-shadow: 0 0 0 3px rgba(15,52,96,0.08); }
+.field textarea { min-height: 80px; resize: vertical; }
+.radio-group, .checkbox-group { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 6px; }
+.radio-group label, .checkbox-group label { font-weight: 400; display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 6px 14px; border: 1.5px solid #d1d5db; border-radius: 8px; font-size: 14px; transition: all 0.2s; background: #fafbfc; }
+.radio-group label:hover, .checkbox-group label:hover { border-color: #0f3460; background: #f0f4ff; }
+.radio-group input:checked + span, .checkbox-group input:checked + span { color: #0f3460; font-weight: 600; }
+.radio-group label:has(input:checked), .checkbox-group label:has(input:checked) { border-color: #0f3460; background: #eef2ff; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 600px) { .grid-2 { grid-template-columns: 1fr; } }
+.btn-bar { position: sticky; bottom: 0; background: white; padding: 16px 20px; border-top: 1px solid #e5e7eb; display: flex; justify-content: center; gap: 12px; z-index: 10; }
+.btn { padding: 12px 32px; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+.btn-primary { background: #0f3460; color: white; }
+.btn-primary:hover { background: #1a4a7a; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(15,52,96,0.3); }
+.btn-secondary { background: #e8ecf1; color: #0f3460; }
+.btn-drive { background: #1a73e8; color: white; display: flex; align-items: center; gap: 8px; }
+.btn-drive:hover { background: #1557b0; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(26,115,232,0.3); }
+.btn-drive:disabled { background: #93c5fd; cursor: wait; }
+.drive-icon { font-size: 18px; }
+.btn-secondary:hover { background: #d1d8e4; }
+.required::after { content: ' *'; color: #e53e3e; }
+.progress-bar { background: #e8ecf1; height: 6px; border-radius: 3px; margin: 20px 0; overflow: hidden; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, #0f3460, #4a90d9); border-radius: 3px; transition: width 0.5s ease; }
+.progress-text { text-align: center; font-size: 13px; color: #666; margin-bottom: 10px; }
+.toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: #10b981; color: white; padding: 12px 24px; border-radius: 8px; font-weight: 600; z-index: 100; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+</style>
+<script src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
+<script src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
+<script src="drive-upload.js"></script>
+</head>
+<body>
+
+<div class="header">
+  <a href="index.html" style="color:rgba(255,255,255,0.7);text-decoration:none;font-size:13px;display:inline-block;margin-bottom:10px;">&larr; Back to all forms</a>
+  <h1>Demand Planning / MRP</h1>
+  <p>NetSuite ERP Discovery Questionnaire — Demand Forecasting, Material Requirements Planning, and Supply Planning</p>
+</div>
+
+<div class="container">
+
+<div class="meta-section">
+  <h2>Session Information</h2>
+  <div class="grid-2">
+    <div class="field"><label class="required">Client / Company Name</label><input type="text" data-export="Client Name"></div>
+    <div class="field"><label class="required">Completed By</label><input type="text" data-export="Completed By"></div>
+    <div class="field"><label>Date</label><input type="date" data-export="Date"></div>
+    <div class="field"><label>Session Attendees</label><input type="text" data-export="Attendees" placeholder="Names and roles"></div>
+  </div>
+</div>
+
+<div class="progress-text">Completion: <span id="progressPct">0%</span></div>
+<div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+
+<!-- SECTION 1: Demand Forecasting -->
+<div class="section">
+  <h2>1. Demand Forecasting</h2>
+  <p class="section-desc">Understanding how demand is forecasted today and the granularity of forecast data.</p>
+
+  <div class="field">
+    <label class="required">How do you currently forecast demand?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Historical Sales" data-export="Forecast Methods"><span>Historical sales data</span></label>
+      <label><input type="checkbox" value="Customer Forecasts" data-export="Forecast Methods"><span>Customer forecasts</span></label>
+      <label><input type="checkbox" value="Manual" data-export="Forecast Methods"><span>Manual forecasting</span></label>
+      <label><input type="checkbox" value="AI/ML" data-export="Forecast Methods"><span>AI/ML-based</span></label>
+      <label><input type="checkbox" value="Sales Team Input" data-export="Forecast Methods"><span>Sales team input</span></label>
+      <label><input type="checkbox" value="Spreadsheets" data-export="Forecast Methods"><span>Spreadsheets</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label class="required">What is the granularity of your demand forecasts?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Item Level" data-export="Forecast Granularity"><span>Item level</span></label>
+      <label><input type="checkbox" value="Location Level" data-export="Forecast Granularity"><span>Location level</span></label>
+      <label><input type="checkbox" value="Customer Level" data-export="Forecast Granularity"><span>Customer level</span></label>
+      <label><input type="checkbox" value="Product Category" data-export="Forecast Granularity"><span>Product category</span></label>
+      <label><input type="checkbox" value="SKU" data-export="Forecast Granularity"><span>SKU/Variant</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label class="required">What is your typical forecast time horizon?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="forecast_horizon" value="1-3 months" data-export="Forecast Horizon"><span>1-3 months</span></label>
+      <label><input type="radio" name="forecast_horizon" value="3-6 months" data-export="Forecast Horizon"><span>3-6 months</span></label>
+      <label><input type="radio" name="forecast_horizon" value="6-12 months" data-export="Forecast Horizon"><span>6-12 months</span></label>
+      <label><input type="radio" name="forecast_horizon" value="12+ months" data-export="Forecast Horizon"><span>12+ months</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label class="required">How frequently do you update your demand forecasts?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="forecast_freq" value="Daily" data-export="Forecast Update Frequency"><span>Daily</span></label>
+      <label><input type="radio" name="forecast_freq" value="Weekly" data-export="Forecast Update Frequency"><span>Weekly</span></label>
+      <label><input type="radio" name="forecast_freq" value="Monthly" data-export="Forecast Update Frequency"><span>Monthly</span></label>
+      <label><input type="radio" name="forecast_freq" value="Quarterly" data-export="Forecast Update Frequency"><span>Quarterly</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you apply seasonal adjustments to forecasts?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="seasonal_adj" value="Yes - automated" data-export="Seasonal Adjustments"><span>Yes - automated</span></label>
+      <label><input type="radio" name="seasonal_adj" value="Yes - manual" data-export="Seasonal Adjustments"><span>Yes - manual</span></label>
+      <label><input type="radio" name="seasonal_adj" value="No" data-export="Seasonal Adjustments"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>How do you handle new product introduction forecasting?</label>
+    <textarea data-export="New Product Forecasting" placeholder="e.g., Use marketing estimates, historical analogs, fixed quantities, customer pre-orders"></textarea>
+  </div>
+</div>
+
+<!-- SECTION 2: Inventory Planning Parameters -->
+<div class="section">
+  <h2>2. Inventory Planning Parameters</h2>
+  <p class="section-desc">Reorder points, safety stock, lead times, and inventory planning rules.</p>
+
+  <div class="field">
+    <label class="required">How do you determine reorder points?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="reorder_method" value="Manual" data-export="Reorder Point Method"><span>Manual setting</span></label>
+      <label><input type="radio" name="reorder_method" value="Formula-based" data-export="Reorder Point Method"><span>Formula-based (avg demand x lead time)</span></label>
+      <label><input type="radio" name="reorder_method" value="NetSuite Calculation" data-export="Reorder Point Method"><span>NetSuite automatic calculation</span></label>
+      <label><input type="radio" name="reorder_method" value="Spreadsheets" data-export="Reorder Point Method"><span>Spreadsheets</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label class="required">How is safety stock calculated?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="safety_stock" value="Manual" data-export="Safety Stock Method"><span>Manual setting</span></label>
+      <label><input type="radio" name="safety_stock" value="Formula-based" data-export="Safety Stock Method"><span>Formula-based (std dev x service level)</span></label>
+      <label><input type="radio" name="safety_stock" value="Fixed Days" data-export="Safety Stock Method"><span>Fixed days of supply</span></label>
+      <label><input type="radio" name="safety_stock" value="Percentage" data-export="Safety Stock Method"><span>Percentage of average demand</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label class="required">What lead time types do you track?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Vendor Lead Time" data-export="Lead Time Types"><span>Vendor lead time</span></label>
+      <label><input type="checkbox" value="Manufacturing Lead Time" data-export="Lead Time Types"><span>Manufacturing lead time</span></label>
+      <label><input type="checkbox" value="Transfer Lead Time" data-export="Lead Time Types"><span>Transfer/Shipping time</span></label>
+      <label><input type="checkbox" value="Setup Time" data-export="Lead Time Types"><span>Setup/Preparation time</span></label>
+      <label><input type="checkbox" value="Quality Inspection" data-export="Lead Time Types"><span>Quality inspection time</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you use minimum order quantities (MOQ) constraints?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="moq" value="Yes" data-export="Minimum Order Quantities"><span>Yes</span></label>
+      <label><input type="radio" name="moq" value="No" data-export="Minimum Order Quantities"><span>No</span></label>
+      <label><input type="radio" name="moq" value="Varies by Item" data-export="Minimum Order Quantities"><span>Varies by item</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>What lot sizing rules do you apply?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Lot for Lot" data-export="Lot Sizing Rules"><span>Lot for lot (exact demand)</span></label>
+      <label><input type="checkbox" value="Fixed Lot" data-export="Lot Sizing Rules"><span>Fixed lot size</span></label>
+      <label><input type="checkbox" value="Economic Order Qty" data-export="Lot Sizing Rules"><span>Economic order quantity (EOQ)</span></label>
+      <label><input type="checkbox" value="Period Order Qty" data-export="Lot Sizing Rules"><span>Period order quantity</span></label>
+      <label><input type="checkbox" value="None" data-export="Lot Sizing Rules"><span>No specific rules</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>What is your preferred stock level approach?</label>
+    <textarea data-export="Stock Level Approach" placeholder="e.g., Min/Max levels, Target stock amount, Days of supply buffer"></textarea>
+  </div>
+
+  <div class="field">
+    <label>Do you use ABC classification for inventory management?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="abc_class" value="Yes - by value" data-export="ABC Classification"><span>Yes - by value</span></label>
+      <label><input type="radio" name="abc_class" value="Yes - by volume" data-export="ABC Classification"><span>Yes - by volume</span></label>
+      <label><input type="radio" name="abc_class" value="Yes - by both" data-export="ABC Classification"><span>Yes - by value & volume</span></label>
+      <label><input type="radio" name="abc_class" value="No" data-export="ABC Classification"><span>No</span></label>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 3: MRP Configuration -->
+<div class="section">
+  <h2>3. MRP Configuration & Planning</h2>
+  <p class="section-desc">MRP setup, planning frequency, and exception handling.</p>
+
+  <div class="field">
+    <label class="required">Are you currently using MRP (Material Requirements Planning)?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="using_mrp" value="Yes - NetSuite MRP" data-export="Current MRP Status"><span>Yes - NetSuite MRP</span></label>
+      <label><input type="radio" name="using_mrp" value="Yes - Third-party" data-export="Current MRP Status"><span>Yes - third-party tool</span></label>
+      <label><input type="radio" name="using_mrp" value="Manual Planning" data-export="Current MRP Status"><span>Manual planning in spreadsheets</span></label>
+      <label><input type="radio" name="using_mrp" value="No" data-export="Current MRP Status"><span>No - not implemented</span></label>
+      <label><input type="radio" name="using_mrp" value="Planned" data-export="Current MRP Status"><span>Planned (not yet implemented)</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label class="required">How frequently do you run MRP?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="mrp_freq" value="Daily" data-export="MRP Run Frequency"><span>Daily</span></label>
+      <label><input type="radio" name="mrp_freq" value="Weekly" data-export="MRP Run Frequency"><span>Weekly</span></label>
+      <label><input type="radio" name="mrp_freq" value="Monthly" data-export="MRP Run Frequency"><span>Monthly</span></label>
+      <label><input type="radio" name="mrp_freq" value="Ad-hoc" data-export="MRP Run Frequency"><span>Ad-hoc / as needed</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label class="required">What is your MRP planning horizon?</label>
+    <input type="text" data-export="MRP Planning Horizon" placeholder="e.g., 12 weeks, 3 months, 6 months">
+  </div>
+
+  <div class="field">
+    <label class="required">Which MRP plan types do you use?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Supply Plan" data-export="MRP Plan Types"><span>Supply plan</span></label>
+      <label><input type="checkbox" value="Demand Plan" data-export="MRP Plan Types"><span>Demand plan</span></label>
+      <label><input type="checkbox" value="Both" data-export="MRP Plan Types"><span>Both</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label class="required">What types of planned orders do you generate?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Purchase Order" data-export="Planned Order Types"><span>Purchase orders (PO)</span></label>
+      <label><input type="checkbox" value="Work Order" data-export="Planned Order Types"><span>Work orders (WO)</span></label>
+      <label><input type="checkbox" value="Transfer Order" data-export="Planned Order Types"><span>Transfer orders (TO)</span></label>
+      <label><input type="checkbox" value="Subcontract" data-export="Planned Order Types"><span>Subcontract orders</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you use firm planned orders?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="firm_orders" value="Yes - frozen period" data-export="Firm Planned Orders"><span>Yes - with frozen period</span></label>
+      <label><input type="radio" name="firm_orders" value="Yes - selective" data-export="Firm Planned Orders"><span>Yes - selective items</span></label>
+      <label><input type="radio" name="firm_orders" value="No" data-export="Firm Planned Orders"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>How do you handle MRP exception messages?</label>
+    <textarea data-export="MRP Exception Handling" placeholder="e.g., Planner reviews and acts, auto-conversion to orders, manual decision-making"></textarea>
+  </div>
+</div>
+
+<!-- SECTION 4: Supply Planning -->
+<div class="section">
+  <h2>4. Supply Planning & Sourcing</h2>
+  <p class="section-desc">Supply sources, vendor management, and procurement strategies.</p>
+
+  <div class="field">
+    <label class="required">What are your supply sources?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Purchase" data-export="Supply Sources"><span>Purchase from vendors</span></label>
+      <label><input type="checkbox" value="Manufacture" data-export="Supply Sources"><span>Manufacture in-house</span></label>
+      <label><input type="checkbox" value="Transfer" data-export="Supply Sources"><span>Transfer from other locations</span></label>
+      <label><input type="checkbox" value="Dropship" data-export="Supply Sources"><span>Dropship from vendors</span></label>
+      <label><input type="checkbox" value="Outsource" data-export="Supply Sources"><span>Outsource/subcontract</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label class="required">How do you identify preferred vendors?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Lowest Cost" data-export="Vendor Selection"><span>Lowest cost</span></label>
+      <label><input type="checkbox" value="Lead Time" data-export="Vendor Selection"><span>Best lead time</span></label>
+      <label><input type="checkbox" value="Quality" data-export="Vendor Selection"><span>Quality rating</span></label>
+      <label><input type="checkbox" value="Relationship" data-export="Vendor Selection"><span>Existing relationship</span></label>
+      <label><input type="checkbox" value="Contracts" data-export="Vendor Selection"><span>Contracted agreements</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you use alternate vendors for critical items?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="alt_vendors" value="Yes" data-export="Alternate Vendors"><span>Yes - for supply continuity</span></label>
+      <label><input type="radio" name="alt_vendors" value="Selective" data-export="Alternate Vendors"><span>Selective items only</span></label>
+      <label><input type="radio" name="alt_vendors" value="No" data-export="Alternate Vendors"><span>No - single source</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you track vendor-specific lead times in NetSuite?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="vendor_lt" value="Yes - by vendor" data-export="Vendor Lead Times"><span>Yes - by vendor</span></label>
+      <label><input type="radio" name="vendor_lt" value="Yes - standard" data-export="Vendor Lead Times"><span>Yes - standard lead time</span></label>
+      <label><input type="radio" name="vendor_lt" value="Manual tracking" data-export="Vendor Lead Times"><span>Manual tracking</span></label>
+      <label><input type="radio" name="vendor_lt" value="No" data-export="Vendor Lead Times"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you use blanket purchase orders?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="blanket_po" value="Yes - extensive" data-export="Blanket PO Usage"><span>Yes - extensive</span></label>
+      <label><input type="radio" name="blanket_po" value="Yes - selective" data-export="Blanket PO Usage"><span>Yes - selective vendors</span></label>
+      <label><input type="radio" name="blanket_po" value="No" data-export="Blanket PO Usage"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>How do you manage supply allocation when demand exceeds capacity?</label>
+    <textarea data-export="Supply Allocation Rules" placeholder="e.g., Fair share, customer priority, revenue-weighted, first-come-first-served"></textarea>
+  </div>
+
+  <div class="field">
+    <label>Do you use multi-location supply planning (distribution)?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="multi_loc_supply" value="Yes - hub/spoke" data-export="Multi-Location Supply"><span>Yes - hub and spoke</span></label>
+      <label><input type="radio" name="multi_loc_supply" value="Yes - direct suppliers" data-export="Multi-Location Supply"><span>Yes - each location orders</span></label>
+      <label><input type="radio" name="multi_loc_supply" value="Single Location" data-export="Multi-Location Supply"><span>Single location only</span></label>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 5: Transfer Orders & Multi-Location -->
+<div class="section">
+  <h2>5. Transfer Orders & Multi-Location Planning</h2>
+  <p class="section-desc">Inter-location transfers, distribution planning, and multi-warehouse management.</p>
+
+  <div class="field">
+    <label class="required">Do you transfer inventory between locations/warehouses?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="transfers" value="Yes - frequently" data-export="Transfer Orders"><span>Yes - frequently</span></label>
+      <label><input type="radio" name="transfers" value="Yes - occasionally" data-export="Transfer Orders"><span>Yes - occasionally</span></label>
+      <label><input type="radio" name="transfers" value="No" data-export="Transfer Orders"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>What is typical inter-warehouse transit time?</label>
+    <input type="text" data-export="Transit Time" placeholder="e.g., 2 days, 1 week, varies by location">
+  </div>
+
+  <div class="field">
+    <label class="required">How do you initiate transfer orders?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Manual Request" data-export="Transfer Order Process"><span>Manual request by warehouse</span></label>
+      <label><input type="checkbox" value="MRP Planning" data-export="Transfer Order Process"><span>MRP auto-planned transfers</span></label>
+      <label><input type="checkbox" value="DRP System" data-export="Transfer Order Process"><span>DRP (Distribution Requirements Planning)</span></label>
+      <label><input type="checkbox" value="Inventory Sync" data-export="Transfer Order Process"><span>Inventory sync/optimization</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you have inter-subsidiary transfers?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="inter_sub" value="Yes - frequent" data-export="Inter-Subsidiary Transfers"><span>Yes - frequent</span></label>
+      <label><input type="radio" name="inter_sub" value="Yes - occasional" data-export="Inter-Subsidiary Transfers"><span>Yes - occasional</span></label>
+      <label><input type="radio" name="inter_sub" value="No" data-export="Inter-Subsidiary Transfers"><span>No</span></label>
+      <label><input type="radio" name="inter_sub" value="Single Subsidiary" data-export="Inter-Subsidiary Transfers"><span>Single subsidiary</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Are transfer prices different from cost?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="transfer_price" value="At cost" data-export="Transfer Pricing"><span>At cost</span></label>
+      <label><input type="radio" name="transfer_price" value="Cost plus markup" data-export="Transfer Pricing"><span>Cost plus markup</span></label>
+      <label><input type="radio" name="transfer_price" value="Market price" data-export="Transfer Pricing"><span>Market price</span></label>
+      <label><input type="radio" name="transfer_price" value="Variable" data-export="Transfer Pricing"><span>Variable by transaction</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you currently use DRP (Distribution Requirements Planning)?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="drp" value="Yes" data-export="DRP Usage"><span>Yes</span></label>
+      <label><input type="radio" name="drp" value="Planned" data-export="DRP Usage"><span>Planned</span></label>
+      <label><input type="radio" name="drp" value="No" data-export="DRP Usage"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>How many locations do you manage inventory for?</label>
+    <input type="number" data-export="Location Count" placeholder="e.g., 5">
+  </div>
+</div>
+
+<!-- SECTION 6: Demand Sources -->
+<div class="section">
+  <h2>6. Demand Sources & Planning</h2>
+  <p class="section-desc">Types of demand that feed into planning and forecasting.</p>
+
+  <div class="field">
+    <label class="required">What demand sources drive your planning?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Sales Orders" data-export="Demand Sources"><span>Sales orders (confirmed)</span></label>
+      <label><input type="checkbox" value="Sales Forecasts" data-export="Demand Sources"><span>Sales forecasts</span></label>
+      <label><input type="checkbox" value="Blanket Orders" data-export="Demand Sources"><span>Blanket sales orders</span></label>
+      <label><input type="checkbox" value="Inter-company Demand" data-export="Demand Sources"><span>Inter-company demand</span></label>
+      <label><input type="checkbox" value="Service Demand" data-export="Demand Sources"><span>Service/maintenance demand</span></label>
+      <label><input type="checkbox" value="Project Demand" data-export="Demand Sources"><span>Project-based demand</span></label>
+      <label><input type="checkbox" value="Replenishment" data-export="Demand Sources"><span>Min/max replenishment</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>How do you prioritize competing demand when supply is constrained?</label>
+    <textarea data-export="Demand Prioritization" placeholder="e.g., Customer orders over forecasts, by customer priority, by margin, FIFO"></textarea>
+  </div>
+
+  <div class="field">
+    <label>Do you incorporate customer demand signals into planning?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="cust_signals" value="Yes - forecasts" data-export="Customer Signals"><span>Yes - customer forecasts</span></label>
+      <label><input type="radio" name="cust_signals" value="Yes - EDI/API" data-export="Customer Signals"><span>Yes - EDI or API feeds</span></label>
+      <label><input type="radio" name="cust_signals" value="Manual" data-export="Customer Signals"><span>Manual submission</span></label>
+      <label><input type="radio" name="cust_signals" value="No" data-export="Customer Signals"><span>No - rely on POs only</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>How is demand split between different sales channels?</label>
+    <textarea data-export="Sales Channels" placeholder="e.g., Direct sales, ecommerce, distributors, resellers — percentage or volume"></textarea>
+  </div>
+
+  <div class="field">
+    <label>Do you track demand by customer segment or priority?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="demand_segment" value="Yes - detailed" data-export="Demand Segmentation"><span>Yes - detailed tracking</span></label>
+      <label><input type="radio" name="demand_segment" value="Yes - basic" data-export="Demand Segmentation"><span>Yes - basic categorization</span></label>
+      <label><input type="radio" name="demand_segment" value="No" data-export="Demand Segmentation"><span>No</span></label>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 7: Planning Exceptions & Alerts -->
+<div class="section">
+  <h2>7. Planning Exceptions & Alerts</h2>
+  <p class="section-desc">Exception handling, alerts, and KPI tracking.</p>
+
+  <div class="field">
+    <label class="required">What planning exceptions do you track?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Past Due PO" data-export="Tracked Exceptions"><span>Past due PO/WO</span></label>
+      <label><input type="checkbox" value="Reschedule In" data-export="Tracked Exceptions"><span>Reschedule in (move earlier)</span></label>
+      <label><input type="checkbox" value="Reschedule Out" data-export="Tracked Exceptions"><span>Reschedule out (delay)</span></label>
+      <label><input type="checkbox" value="Cancel" data-export="Tracked Exceptions"><span>Cancel (excess supply)</span></label>
+      <label><input type="checkbox" value="Expedite" data-export="Tracked Exceptions"><span>Expedite (urgent)</span></label>
+      <label><input type="checkbox" value="Safety Stock" data-export="Tracked Exceptions"><span>Safety stock violations</span></label>
+      <label><input type="checkbox" value="Capacity Constraints" data-export="Tracked Exceptions"><span>Capacity constraints</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>How do you prioritize exception handling?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="exc_priority" value="By impact" data-export="Exception Prioritization"><span>By impact (revenue, cost)</span></label>
+      <label><input type="radio" name="exc_priority" value="By urgency" data-export="Exception Prioritization"><span>By urgency (due date)</span></label>
+      <label><input type="radio" name="exc_priority" value="By customer" data-export="Exception Prioritization"><span>By customer tier</span></label>
+      <label><input type="radio" name="exc_priority" value="Manual" data-export="Exception Prioritization"><span>Manual decision</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Who is responsible for planning exception resolution?</label>
+    <textarea data-export="Exception Responsibility" placeholder="e.g., Demand planner, inventory manager, production scheduler, cross-functional team"></textarea>
+  </div>
+
+  <div class="field">
+    <label>What are your key planning KPIs?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Forecast Accuracy" data-export="Planning KPIs"><span>Forecast accuracy (MAPE, RMSE)</span></label>
+      <label><input type="checkbox" value="Inventory Turnover" data-export="Planning KPIs"><span>Inventory turnover</span></label>
+      <label><input type="checkbox" value="Stockout Rate" data-export="Planning KPIs"><span>Stockout / fill rate</span></label>
+      <label><input type="checkbox" value="Days of Supply" data-export="Planning KPIs"><span>Days of supply</span></label>
+      <label><input type="checkbox" value="Obsolescence" data-export="Planning KPIs"><span>Obsolescence rate</span></label>
+      <label><input type="checkbox" value="Lead Time" data-export="Planning KPIs"><span>On-time delivery %</span></label>
+      <label><input type="checkbox" value="Safety Stock" data-export="Planning KPIs"><span>Safety stock utilization</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>How often do planners review exceptions and adjust plans?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="review_freq" value="Daily" data-export="Exception Review Frequency"><span>Daily</span></label>
+      <label><input type="radio" name="review_freq" value="Multiple times/week" data-export="Exception Review Frequency"><span>Multiple times per week</span></label>
+      <label><input type="radio" name="review_freq" value="Weekly" data-export="Exception Review Frequency"><span>Weekly</span></label>
+      <label><input type="radio" name="review_freq" value="As needed" data-export="Exception Review Frequency"><span>As needed</span></label>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 8: Seasonality & Trends -->
+<div class="section">
+  <h2>8. Seasonality, Trends & Demand Volatility</h2>
+  <p class="section-desc">Understanding demand patterns, lifecycle management, and inventory challenges.</p>
+
+  <div class="field">
+    <label class="required">Do you have seasonal products or demand patterns?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="seasonality" value="Highly seasonal" data-export="Seasonality Level"><span>Highly seasonal</span></label>
+      <label><input type="radio" name="seasonality" value="Moderately seasonal" data-export="Seasonality Level"><span>Moderately seasonal</span></label>
+      <label><input type="radio" name="seasonality" value="Minimal seasonality" data-export="Seasonality Level"><span>Minimal seasonality</span></label>
+      <label><input type="radio" name="seasonality" value="None" data-export="Seasonality Level"><span>No seasonality</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>What percentage of demand is driven by promotions / special events?</label>
+    <input type="text" data-export="Promotional Demand %" placeholder="e.g., 15%, 30%, varies">
+  </div>
+
+  <div class="field">
+    <label>How would you characterize demand volatility?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="volatility" value="Low - predictable" data-export="Demand Volatility"><span>Low - predictable</span></label>
+      <label><input type="radio" name="volatility" value="Moderate" data-export="Demand Volatility"><span>Moderate - with known patterns</span></label>
+      <label><input type="radio" name="volatility" value="High" data-export="Demand Volatility"><span>High - unpredictable</span></label>
+      <label><input type="radio" name="volatility" value="Extremely high" data-export="Demand Volatility"><span>Extremely high - variable</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>How do you manage slow-moving or obsolete inventory?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="ABC Analysis" data-export="Obsolescence Management"><span>ABC analysis review</span></label>
+      <label><input type="checkbox" value="Age-based Markdowns" data-export="Obsolescence Management"><span>Age-based markdowns</span></label>
+      <label><input type="checkbox" value="Liquidation Sales" data-export="Obsolescence Management"><span>Liquidation sales</span></label>
+      <label><input type="checkbox" value="Donation" data-export="Obsolescence Management"><span>Donations</span></label>
+      <label><input type="checkbox" value="Write-off" data-export="Obsolescence Management"><span>Write-off/disposal</span></label>
+      <label><input type="checkbox" value="Manual Review" data-export="Obsolescence Management"><span>Manual periodic review</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you track product lifecycle stages (new, growth, mature, decline)?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="lifecycle" value="Yes" data-export="Lifecycle Management"><span>Yes</span></label>
+      <label><input type="radio" name="lifecycle" value="Partial" data-export="Lifecycle Management"><span>Partial tracking</span></label>
+      <label><input type="radio" name="lifecycle" value="No" data-export="Lifecycle Management"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>What adjustments do you make for product phase-out / discontinuation?</label>
+    <textarea data-export="Phase-out Process" placeholder="e.g., Reduce reorder points, clear inventory, end-of-life sales, transfer to distribution"></textarea>
+  </div>
+</div>
+
+<!-- SECTION 9: Current Planning Process -->
+<div class="section">
+  <h2>9. Current Planning Process & Performance</h2>
+  <p class="section-desc">Existing tools, processes, and planning effectiveness.</p>
+
+  <div class="field">
+    <label class="required">What tools do you currently use for demand planning?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="NetSuite" data-export="Current Planning Tools"><span>NetSuite (integrated)</span></label>
+      <label><input type="checkbox" value="ERP - Other" data-export="Current Planning Tools"><span>Other ERP system</span></label>
+      <label><input type="checkbox" value="Demand Planning Software" data-export="Current Planning Tools"><span>Dedicated demand planning software</span></label>
+      <label><input type="checkbox" value="Excel Spreadsheets" data-export="Current Planning Tools"><span>Excel spreadsheets</span></label>
+      <label><input type="checkbox" value="Manual" data-export="Current Planning Tools"><span>Manual processes</span></label>
+      <label><input type="checkbox" value="Custom Build" data-export="Current Planning Tools"><span>Custom-built solution</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>What percentage of planning is still done in spreadsheets?</label>
+    <input type="text" data-export="Spreadsheet Dependency %" placeholder="e.g., 40%, 100%, minimal">
+  </div>
+
+  <div class="field">
+    <label>What are the biggest planning challenges today?</label>
+    <textarea data-export="Planning Challenges" placeholder="e.g., Forecast accuracy, demand volatility, supply constraints, slow tool performance, manual data entry"></textarea>
+  </div>
+
+  <div class="field">
+    <label class="required">What is your current forecast accuracy (MAPE)?</label>
+    <input type="text" data-export="Current Forecast Accuracy" placeholder="e.g., 15%, 25%, unknown">
+  </div>
+
+  <div class="field">
+    <label class="required">What are your typical inventory turns per year?</label>
+    <input type="text" data-export="Inventory Turnover" placeholder="e.g., 4-5 times, varies by product">
+  </div>
+
+  <div class="field">
+    <label class="required">How frequently do stockouts occur?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="stockout_freq" value="Rarely - <2%" data-export="Stockout Frequency"><span>Rarely (less than 2%)</span></label>
+      <label><input type="radio" name="stockout_freq" value="Occasionally - 2-5%" data-export="Stockout Frequency"><span>Occasionally (2-5%)</span></label>
+      <label><input type="radio" name="stockout_freq" value="Frequently - 5-10%" data-export="Stockout Frequency"><span>Frequently (5-10%)</span></label>
+      <label><input type="radio" name="stockout_freq" value="Often - >10%" data-export="Stockout Frequency"><span>Often (more than 10%)</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>How much excess inventory do you typically carry?</label>
+    <input type="text" data-export="Excess Inventory %" placeholder="e.g., 10-15% of total value, $XXX">
+  </div>
+</div>
+
+<!-- SECTION 10: Additional Requirements -->
+<div class="section">
+  <h2>10. Additional Requirements & Integration</h2>
+  <p class="section-desc">Future capabilities, integration needs, and other requirements.</p>
+
+  <div class="field">
+    <label>Do you need integration with ecommerce demand signals?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="ecom_integration" value="Yes - real-time" data-export="Ecommerce Integration"><span>Yes - real-time</span></label>
+      <label><input type="radio" name="ecom_integration" value="Yes - daily" data-export="Ecommerce Integration"><span>Yes - daily sync</span></label>
+      <label><input type="radio" name="ecom_integration" value="No" data-export="Ecommerce Integration"><span>No - not applicable</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you need EDI demand signal integration?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="edi_integration" value="Yes - with customers" data-export="EDI Integration"><span>Yes - customer EDI forecasts</span></label>
+      <label><input type="radio" name="edi_integration" value="Yes - with suppliers" data-export="EDI Integration"><span>Yes - supplier orders</span></label>
+      <label><input type="radio" name="edi_integration" value="No" data-export="EDI Integration"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you need custom fields for demand / inventory planning?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="custom_fields" value="Yes - many" data-export="Custom Fields"><span>Yes - many</span></label>
+      <label><input type="radio" name="custom_fields" value="Yes - few" data-export="Custom Fields"><span>Yes - a few</span></label>
+      <label><input type="radio" name="custom_fields" value="No" data-export="Custom Fields"><span>No - standard fields sufficient</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>What reporting capabilities do you need?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Forecast vs Actual" data-export="Reporting Needs"><span>Forecast vs actual</span></label>
+      <label><input type="checkbox" value="ABC Analysis" data-export="Reporting Needs"><span>ABC analysis reports</span></label>
+      <label><input type="checkbox" value="Inventory Health" data-export="Reporting Needs"><span>Inventory health dashboard</span></label>
+      <label><input type="checkbox" value="Supply Status" data-export="Reporting Needs"><span>Supply status / coverage</span></label>
+      <label><input type="checkbox" value="Exception Reports" data-export="Reporting Needs"><span>Exception/variance reports</span></label>
+      <label><input type="checkbox" value="Lead Time Analysis" data-export="Reporting Needs"><span>Lead time analysis</span></label>
+      <label><input type="checkbox" value="Demand Trends" data-export="Reporting Needs"><span>Demand trends/seasonality</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you need advanced analytics or AI/ML capabilities?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="advanced_analytics" value="Yes - forecast AI" data-export="Advanced Analytics"><span>Yes - AI-powered forecasting</span></label>
+      <label><input type="radio" name="advanced_analytics" value="Yes - optimization" data-export="Advanced Analytics"><span>Yes - supply optimization</span></label>
+      <label><input type="radio" name="advanced_analytics" value="Yes - other" data-export="Advanced Analytics"><span>Yes - other AI/ML</span></label>
+      <label><input type="radio" name="advanced_analytics" value="No" data-export="Advanced Analytics"><span>No - basic planning sufficient</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>What is your timeline for MRP / Demand Planning implementation?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="timeline" value="ASAP - next 3 months" data-export="Implementation Timeline"><span>ASAP (next 3 months)</span></label>
+      <label><input type="radio" name="timeline" value="3-6 months" data-export="Implementation Timeline"><span>3-6 months</span></label>
+      <label><input type="radio" name="timeline" value="6-12 months" data-export="Implementation Timeline"><span>6-12 months</span></label>
+      <label><input type="radio" name="timeline" value="12+ months" data-export="Implementation Timeline"><span>12+ months (phase 2)</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Any other notes, requirements, or concerns?</label>
+    <textarea data-export="Additional Notes" placeholder="Capture any other requirements discussed during the session"></textarea>
+  </div>
+</div>
+
+</div><!-- end container -->
+
+<div class="btn-bar">
+  <button class="btn btn-secondary" onclick="clearForm()">Clear Form</button>
+  <button class="btn btn-primary" onclick="exportToExcel()">Export to Excel</button>
+  <button class="btn btn-drive" id="btnDrive" onclick="saveToDrive()" disabled title="Loading Google Drive..."><span class="drive-icon">📁</span> Save to Google Drive</button>
+</div>
+
+<div class="toast" id="toast">Exported successfully!</div>
+
+<script>
+// Track progress
+function updateProgress() {
+  const fields = document.querySelectorAll('input[type="text"], input[type="number"], input[type="date"], select, textarea');
+  const radios = {};
+  document.querySelectorAll('input[type="radio"]').forEach(r => { if(r.checked) radios[r.name] = true; });
+  const checkboxes = {};
+  document.querySelectorAll('input[type="checkbox"]').forEach(c => { if(c.checked) checkboxes[c.closest('.field')?.querySelector('label')?.textContent || 'x'] = true; });
+  let filled = 0, total = 0;
+  fields.forEach(f => { total++; if(f.value.trim()) filled++; });
+  const radioGroups = new Set();
+  document.querySelectorAll('input[type="radio"]').forEach(r => radioGroups.add(r.name));
+  total += radioGroups.size;
+  filled += Object.keys(radios).length;
+  const pct = total > 0 ? Math.round((filled / total) * 100) : 0;
+  document.getElementById('progressPct').textContent = pct + '%';
+  document.getElementById('progressFill').style.width = pct + '%';
+}
+document.addEventListener('input', updateProgress);
+document.addEventListener('change', updateProgress);
+
+function exportToExcel() {
+  const data = [];
+  const sections = document.querySelectorAll('.section, .meta-section');
+  sections.forEach(section => {
+    const sectionTitle = section.querySelector('h2')?.textContent || '';
+    const fields = section.querySelectorAll('.field');
+    fields.forEach(field => {
+      const label = field.querySelector('label')?.textContent?.replace(' *', '') || '';
+      let value = '';
+      const input = field.querySelector('input[type="text"], input[type="number"], input[type="date"], select, textarea');
+      if (input) { value = input.value; }
+      const checkedRadio = field.querySelector('input[type="radio"]:checked');
+      if (checkedRadio) { value = checkedRadio.value; }
+      const checkedBoxes = field.querySelectorAll('input[type="checkbox"]:checked');
+      if (checkedBoxes.length > 0) { value = Array.from(checkedBoxes).map(c => c.value).join(', '); }
+      data.push({ 'Section': sectionTitle, 'Question': label, 'Response': value });
+    });
+  });
+  const ws = XLSX.utils.json_to_sheet(data);
+  ws['!cols'] = [{ wch: 30 }, { wch: 60 }, { wch: 60 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Demand Planning - MRP');
+  const clientName = document.querySelector('[data-export="Client Name"]')?.value || 'Client';
+  const date = new Date().toISOString().split('T')[0];
+  XLSX.writeFile(wb, `${clientName}_Demand-Planning-MRP_${date}.xlsx`);
+  showToast();
+}
+
+function clearForm() {
+  if (confirm('Are you sure you want to clear all fields?')) {
+    document.querySelectorAll('input[type="text"], input[type="number"], input[type="date"], textarea').forEach(f => f.value = '');
+    document.querySelectorAll('select').forEach(s => s.selectedIndex = 0);
+    document.querySelectorAll('input[type="radio"], input[type="checkbox"]').forEach(c => c.checked = false);
+    updateProgress();
+  }
+}
+
+function showToast() {
+  const t = document.getElementById('toast');
+  t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 2500);
+}
+</script>
+</body>
+</html>

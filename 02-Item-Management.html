@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NetSuite Discovery: Item Management</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #f0f2f5; color: #1a1a2e; line-height: 1.6; }
+.header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); color: white; padding: 40px 20px; text-align: center; }
+.header h1 { font-size: 28px; margin-bottom: 8px; }
+.header p { opacity: 0.85; font-size: 15px; max-width: 600px; margin: 0 auto; }
+.container { max-width: 900px; margin: 30px auto; padding: 0 20px 60px; }
+.meta-section { background: white; border-radius: 12px; padding: 30px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.meta-section h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #0f3460; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #e8ecf1; }
+.section { background: white; border-radius: 12px; padding: 30px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.section h2 { font-size: 20px; color: #0f3460; margin-bottom: 6px; }
+.section .section-desc { color: #666; font-size: 14px; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 2px solid #e8ecf1; }
+.field { margin-bottom: 20px; }
+.field label { display: block; font-weight: 600; font-size: 14px; margin-bottom: 6px; color: #333; }
+.field .hint { font-size: 12px; color: #888; margin-bottom: 6px; font-style: italic; }
+.field input[type="text"], .field input[type="number"], .field input[type="date"], .field select, .field textarea {
+  width: 100%; padding: 10px 14px; border: 1.5px solid #d1d5db; border-radius: 8px; font-size: 14px; font-family: inherit; transition: border-color 0.2s; background: #fafbfc;
+}
+.field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: #0f3460; background: white; box-shadow: 0 0 0 3px rgba(15,52,96,0.08); }
+.field textarea { min-height: 80px; resize: vertical; }
+.radio-group, .checkbox-group { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 6px; }
+.radio-group label, .checkbox-group label { font-weight: 400; display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 6px 14px; border: 1.5px solid #d1d5db; border-radius: 8px; font-size: 14px; transition: all 0.2s; background: #fafbfc; }
+.radio-group label:hover, .checkbox-group label:hover { border-color: #0f3460; background: #f0f4ff; }
+.radio-group input:checked + span, .checkbox-group input:checked + span { color: #0f3460; font-weight: 600; }
+.radio-group label:has(input:checked), .checkbox-group label:has(input:checked) { border-color: #0f3460; background: #eef2ff; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 600px) { .grid-2 { grid-template-columns: 1fr; } }
+.btn-bar { position: sticky; bottom: 0; background: white; padding: 16px 20px; border-top: 1px solid #e5e7eb; display: flex; justify-content: center; gap: 12px; z-index: 10; }
+.btn { padding: 12px 32px; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+.btn-primary { background: #0f3460; color: white; }
+.btn-primary:hover { background: #1a4a7a; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(15,52,96,0.3); }
+.btn-secondary { background: #e8ecf1; color: #0f3460; }
+.btn-drive { background: #1a73e8; color: white; display: flex; align-items: center; gap: 8px; }
+.btn-drive:hover { background: #1557b0; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(26,115,232,0.3); }
+.btn-drive:disabled { background: #93c5fd; cursor: wait; }
+.drive-icon { font-size: 18px; }
+.btn-secondary:hover { background: #d1d8e4; }
+.required::after { content: ' *'; color: #e53e3e; }
+.progress-bar { background: #e8ecf1; height: 6px; border-radius: 3px; margin: 20px 0; overflow: hidden; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, #0f3460, #4a90d9); border-radius: 3px; transition: width 0.5s ease; }
+.progress-text { text-align: center; font-size: 13px; color: #666; margin-bottom: 10px; }
+.toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: #10b981; color: white; padding: 12px 24px; border-radius: 8px; font-weight: 600; z-index: 100; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+</style>
+<script src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
+<script src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
+<script src="drive-upload.js"></script>
+</head>
+<body>
+
+<div class="header">
+  <a href="index.html" style="color:rgba(255,255,255,0.7);text-decoration:none;font-size:13px;display:inline-block;margin-bottom:10px;">&larr; Back to all forms</a>
+  <h1>Item Management</h1>
+  <p>NetSuite ERP Discovery Questionnaire — Inventory, Non-Inventory, Assembly, BOM, and Item Configuration</p>
+</div>
+
+<div class="container">
+
+<div class="meta-section">
+  <h2>Session Information</h2>
+  <div class="grid-2">
+    <div class="field"><label class="required">Client / Company Name</label><input type="text" data-export="Client Name"></div>
+    <div class="field"><label class="required">Completed By</label><input type="text" data-export="Completed By"></div>
+    <div class="field"><label>Date</label><input type="date" data-export="Date"></div>
+    <div class="field"><label>Session Attendees</label><input type="text" data-export="Attendees" placeholder="Names and roles"></div>
+  </div>
+</div>
+
+<div class="progress-text">Completion: <span id="progressPct">0%</span></div>
+<div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+
+<!-- SECTION 1: Item Types Overview -->
+<div class="section">
+  <h2>1. Item Types Overview</h2>
+  <p class="section-desc">Understanding what item types are currently used and which are planned for future use.</p>
+
+  <div class="field">
+    <label class="required">Which item types does your company currently use?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Inventory" data-export="Current Item Types"><span>Inventory</span></label>
+      <label><input type="checkbox" value="Non-Inventory" data-export="Current Item Types"><span>Non-Inventory</span></label>
+      <label><input type="checkbox" value="Service" data-export="Current Item Types"><span>Service</span></label>
+      <label><input type="checkbox" value="Other Charge" data-export="Current Item Types"><span>Other Charge</span></label>
+      <label><input type="checkbox" value="Group" data-export="Current Item Types"><span>Group</span></label>
+      <label><input type="checkbox" value="Kit" data-export="Current Item Types"><span>Kit</span></label>
+      <label><input type="checkbox" value="Assembly/BOM" data-export="Current Item Types"><span>Assembly/BOM</span></label>
+      <label><input type="checkbox" value="Lot Numbered" data-export="Current Item Types"><span>Lot Numbered</span></label>
+      <label><input type="checkbox" value="Serialized" data-export="Current Item Types"><span>Serialized</span></label>
+      <label><input type="checkbox" value="Matrix" data-export="Current Item Types"><span>Matrix</span></label>
+      <label><input type="checkbox" value="Description" data-export="Current Item Types"><span>Description</span></label>
+      <label><input type="checkbox" value="Discount" data-export="Current Item Types"><span>Discount</span></label>
+      <label><input type="checkbox" value="Markup" data-export="Current Item Types"><span>Markup</span></label>
+      <label><input type="checkbox" value="Payment" data-export="Current Item Types"><span>Payment</span></label>
+      <label><input type="checkbox" value="Subtotal" data-export="Current Item Types"><span>Subtotal</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Which item types are planned for future implementation?</label>
+    <textarea data-export="Planned Item Types" placeholder="Describe any new item types planned during NetSuite implementation"></textarea>
+  </div>
+
+  <div class="field">
+    <label class="required">How many active items do you currently have?</label>
+    <input type="number" data-export="Total Active Items" placeholder="e.g., 5000">
+  </div>
+
+  <div class="field">
+    <label>How many inactive / obsolete items do you want to migrate?</label>
+    <input type="number" data-export="Inactive Items to Migrate" placeholder="e.g., 2000">
+  </div>
+
+  <div class="field">
+    <label>What percentage of your items are:</label>
+    <textarea data-export="Item Type Distribution" placeholder="e.g., 60% Inventory, 25% Non-Inventory, 15% Service"></textarea>
+  </div>
+
+  <div class="field">
+    <label>Do you have a master data governance process for items?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="item_governance" value="Yes - centralized" data-export="Item Governance"><span>Yes - centralized</span></label>
+      <label><input type="radio" name="item_governance" value="Yes - decentralized" data-export="Item Governance"><span>Yes - decentralized</span></label>
+      <label><input type="radio" name="item_governance" value="No formal process" data-export="Item Governance"><span>No formal process</span></label>
+      <label><input type="radio" name="item_governance" value="Plan to implement" data-export="Item Governance"><span>Plan to implement</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Describe your item naming and numbering standards</label>
+    <textarea data-export="Item Naming Standards" placeholder="e.g., Format: [Category]-[Line]-[Type]-[Color]-[Size], e.g., PROD-05-TSH-BLK-LG"></textarea>
+  </div>
+</div>
+
+<!-- SECTION 2: Item Categorization & Hierarchy -->
+<div class="section">
+  <h2>2. Item Categorization & Hierarchy</h2>
+  <p class="section-desc">Item categories, product lines, and organizational structure for items.</p>
+
+  <div class="field">
+    <label class="required">How many item categories / product lines do you have?</label>
+    <input type="number" data-export="Item Category Count" placeholder="e.g., 12">
+  </div>
+
+  <div class="field">
+    <label>List your main item categories and product lines</label>
+    <textarea data-export="Item Categories" placeholder="e.g., Electronics, Apparel, Software, Services, Raw Materials, Components"></textarea>
+  </div>
+
+  <div class="field">
+    <label>Do your item categories have a multi-level hierarchy?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="cat_hierarchy" value="Single-level" data-export="Category Hierarchy"><span>Single-level</span></label>
+      <label><input type="radio" name="cat_hierarchy" value="Two-level" data-export="Category Hierarchy"><span>Two-level</span></label>
+      <label><input type="radio" name="cat_hierarchy" value="Three+ levels" data-export="Category Hierarchy"><span>Three or more levels</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you use Item Groups (for bundling related items)?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="item_groups" value="Yes - extensively" data-export="Item Groups Used"><span>Yes - extensively</span></label>
+      <label><input type="radio" name="item_groups" value="Yes - occasionally" data-export="Item Groups Used"><span>Yes - occasionally</span></label>
+      <label><input type="radio" name="item_groups" value="No" data-export="Item Groups Used"><span>No</span></label>
+      <label><input type="radio" name="item_groups" value="Plan to use" data-export="Item Groups Used"><span>Plan to use</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you use item numbering that is:</label>
+    <div class="radio-group">
+      <label><input type="radio" name="item_numbering" value="Manual" data-export="Item Numbering Method"><span>Manual (user-defined)</span></label>
+      <label><input type="radio" name="item_numbering" value="Auto-generated" data-export="Item Numbering Method"><span>Auto-generated</span></label>
+      <label><input type="radio" name="item_numbering" value="Hybrid" data-export="Item Numbering Method"><span>Hybrid (mix of manual and auto)</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Describe your item number format and any naming rules</label>
+    <textarea data-export="Item Number Format" placeholder="e.g., Numbers: 1000-9999, Letters: A-Z codes for category, Format: [Category-Code]-[Sequence]"></textarea>
+  </div>
+</div>
+
+<!-- SECTION 3: Inventory Items -->
+<div class="section">
+  <h2>3. Inventory Items</h2>
+  <p class="section-desc">Costing methods, cost tracking, and inventory management practices.</p>
+
+  <div class="field">
+    <label class="required">Which costing method(s) do you use for inventory?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Average Cost" data-export="Costing Methods"><span>Average Cost</span></label>
+      <label><input type="checkbox" value="FIFO" data-export="Costing Methods"><span>FIFO</span></label>
+      <label><input type="checkbox" value="LIFO" data-export="Costing Methods"><span>LIFO</span></label>
+      <label><input type="checkbox" value="Standard Cost" data-export="Costing Methods"><span>Standard Cost</span></label>
+      <label><input type="checkbox" value="Lot Cost" data-export="Costing Methods"><span>Lot Cost</span></label>
+      <label><input type="checkbox" value="Actual Cost" data-export="Costing Methods"><span>Actual Cost</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do different items use different costing methods?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="mixed_costing" value="Yes" data-export="Mixed Costing Methods"><span>Yes</span></label>
+      <label><input type="radio" name="mixed_costing" value="No - all same" data-export="Mixed Costing Methods"><span>No - all items use same method</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>How many cost categories / cost centers for inventory tracking?</label>
+    <input type="number" data-export="Cost Category Count" placeholder="e.g., 5">
+  </div>
+
+  <div class="field">
+    <label>Do you track landed costs (freight, duties, etc.)?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="landed_cost" value="Yes - detailed tracking" data-export="Landed Cost Tracking"><span>Yes - detailed tracking</span></label>
+      <label><input type="radio" name="landed_cost" value="Yes - basic" data-export="Landed Cost Tracking"><span>Yes - basic</span></label>
+      <label><input type="radio" name="landed_cost" value="No" data-export="Landed Cost Tracking"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you use preferred vendors for items?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="preferred_vendors" value="Yes - extensively" data-export="Preferred Vendors"><span>Yes - extensively</span></label>
+      <label><input type="radio" name="preferred_vendors" value="Yes - some items" data-export="Preferred Vendors"><span>Yes - some items</span></label>
+      <label><input type="radio" name="preferred_vendors" value="No" data-export="Preferred Vendors"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you track reorder points and safety stock levels?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="reorder_tracking" value="Yes - all items" data-export="Reorder Point Tracking"><span>Yes - all items</span></label>
+      <label><input type="radio" name="reorder_tracking" value="Yes - key items only" data-export="Reorder Point Tracking"><span>Yes - key items only</span></label>
+      <label><input type="radio" name="reorder_tracking" value="No" data-export="Reorder Point Tracking"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>What is your typical lead time range for inventory replenishment?</label>
+    <input type="text" data-export="Lead Time Range" placeholder="e.g., 1-2 days (local), 30-60 days (overseas)">
+  </div>
+
+  <div class="field">
+    <label>How many warehouse locations / bins do you manage?</label>
+    <input type="text" data-export="Warehouse Locations" placeholder="e.g., 2 warehouses with 150 bins each">
+  </div>
+</div>
+
+<!-- SECTION 4: Non-Inventory & Service Items -->
+<div class="section">
+  <h2>4. Non-Inventory & Service Items</h2>
+  <p class="section-desc">Items used in purchasing and sales but not tracked in inventory.</p>
+
+  <div class="field">
+    <label class="required">What types of non-inventory items do you have?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Supplies" data-export="Non-Inventory Types"><span>Supplies</span></label>
+      <label><input type="checkbox" value="Office Equipment" data-export="Non-Inventory Types"><span>Office Equipment</span></label>
+      <label><input type="checkbox" value="Expense Items" data-export="Non-Inventory Types"><span>Expense Items</span></label>
+      <label><input type="checkbox" value="Software Licenses" data-export="Non-Inventory Types"><span>Software Licenses</span></label>
+      <label><input type="checkbox" value="Consulting" data-export="Non-Inventory Types"><span>Consulting / Professional Services</span></label>
+      <label><input type="checkbox" value="Repair Services" data-export="Non-Inventory Types"><span>Repair & Maintenance</span></label>
+      <label><input type="checkbox" value="Other" data-export="Non-Inventory Types"><span>Other</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>How many service items do you sell/use?</label>
+    <input type="number" data-export="Service Item Count" placeholder="e.g., 150">
+  </div>
+
+  <div class="field">
+    <label>Are service items priced by:</label>
+    <div class="radio-group">
+      <label><input type="radio" name="service_pricing" value="Fixed rate" data-export="Service Item Pricing"><span>Fixed rate</span></label>
+      <label><input type="radio" name="service_pricing" value="Time & materials" data-export="Service Item Pricing"><span>Time & materials</span></label>
+      <label><input type="radio" name="service_pricing" value="Mixed" data-export="Service Item Pricing"><span>Mixed methods</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you use expense items for pass-through costs?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="expense_items" value="Yes" data-export="Expense Item Usage"><span>Yes</span></label>
+      <label><input type="radio" name="expense_items" value="No" data-export="Expense Item Usage"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Examples of non-inventory items used in sales</label>
+    <textarea data-export="Non-Inventory Sales Examples" placeholder="e.g., Installation labor, Consulting hours, Freight, Packaging materials"></textarea>
+  </div>
+</div>
+
+<!-- SECTION 5: Assembly/BOM Items -->
+<div class="section">
+  <h2>5. Assembly/BOM Items</h2>
+  <p class="section-desc">Bill of Materials, assembly configurations, and production structures.</p>
+
+  <div class="field">
+    <label>Do you use assembly items or BOMs in your business?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="use_bom" value="Yes - extensively" data-export="BOM Usage"><span>Yes - extensively</span></label>
+      <label><input type="radio" name="use_bom" value="Yes - some" data-export="BOM Usage"><span>Yes - some products</span></label>
+      <label><input type="radio" name="use_bom" value="No" data-export="BOM Usage"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>What is the typical BOM complexity?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="bom_complexity" value="Single-level" data-export="BOM Complexity"><span>Single-level (simple)</span></label>
+      <label><input type="radio" name="bom_complexity" value="Multi-level" data-export="BOM Complexity"><span>Multi-level (3-5 levels)</span></label>
+      <label><input type="radio" name="bom_complexity" value="Complex" data-export="BOM Complexity"><span>Complex (5+ levels, many variations)</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>How many assembly items do you have?</label>
+    <input type="number" data-export="Assembly Item Count" placeholder="e.g., 500">
+  </div>
+
+  <div class="field">
+    <label>Do you use phantom assemblies (assemblies that are not stocked)?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="phantom_asm" value="Yes" data-export="Phantom Assemblies"><span>Yes</span></label>
+      <label><input type="radio" name="phantom_asm" value="No" data-export="Phantom Assemblies"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you track BOM revisions / versions?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="bom_revision" value="Yes - date effective" data-export="BOM Versioning"><span>Yes - date effective</span></label>
+      <label><input type="radio" name="bom_revision" value="Yes - revision numbers" data-export="BOM Versioning"><span>Yes - revision numbers</span></label>
+      <label><input type="radio" name="bom_revision" value="No" data-export="BOM Versioning"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you have co-products or by-products from manufacturing?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="co_products" value="Yes" data-export="Co-products"><span>Yes</span></label>
+      <label><input type="radio" name="co_products" value="No" data-export="Co-products"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do BOMs include yield factors or scrap allowances?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="yield_scrap" value="Yes - tracked" data-export="Yield/Scrap Tracking"><span>Yes - tracked per item</span></label>
+      <label><input type="radio" name="yield_scrap" value="Yes - standard" data-export="Yield/Scrap Tracking"><span>Yes - standard rates</span></label>
+      <label><input type="radio" name="yield_scrap" value="No" data-export="Yield/Scrap Tracking"><span>No</span></label>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 6: Lot & Serial Tracking -->
+<div class="section">
+  <h2>6. Lot & Serial Tracking</h2>
+  <p class="section-desc">Lot numbering, serial numbers, and expiration date tracking.</p>
+
+  <div class="field">
+    <label class="required">Do you track items by lot number?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="lot_tracking" value="Yes - all items" data-export="Lot Tracking"><span>Yes - all items</span></label>
+      <label><input type="radio" name="lot_tracking" value="Yes - some items" data-export="Lot Tracking"><span>Yes - specific items only</span></label>
+      <label><input type="radio" name="lot_tracking" value="No" data-export="Lot Tracking"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>How many items require lot tracking?</label>
+    <input type="number" data-export="Lot-Tracked Item Count" placeholder="e.g., 1200">
+  </div>
+
+  <div class="field">
+    <label>Describe your lot numbering format</label>
+    <input type="text" data-export="Lot Number Format" placeholder="e.g., LOT-YYYYMMDD-###, Supplier format, Sequential">
+  </div>
+
+  <div class="field">
+    <label class="required">Do you track items by serial number?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="serial_tracking" value="Yes - all items" data-export="Serial Tracking"><span>Yes - all items</span></label>
+      <label><input type="radio" name="serial_tracking" value="Yes - high-value items" data-export="Serial Tracking"><span>Yes - high-value items only</span></label>
+      <label><input type="radio" name="serial_tracking" value="No" data-export="Serial Tracking"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>How many items require serial tracking?</label>
+    <input type="number" data-export="Serial-Tracked Item Count" placeholder="e.g., 350">
+  </div>
+
+  <div class="field">
+    <label>Describe your serial number format</label>
+    <input type="text" data-export="Serial Number Format" placeholder="e.g., Manufacturer SN, Internal auto-generated, [YY][MM][####]">
+  </div>
+
+  <div class="field">
+    <label>Do you track expiration dates on items?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="expiry_tracking" value="Yes - required" data-export="Expiration Tracking"><span>Yes - required (e.g., food, pharma)</span></label>
+      <label><input type="radio" name="expiry_tracking" value="Yes - optional" data-export="Expiration Tracking"><span>Yes - optional</span></label>
+      <label><input type="radio" name="expiry_tracking" value="No" data-export="Expiration Tracking"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>How do you handle expired or shelf-life items?</label>
+    <textarea data-export="Expiration Handling" placeholder="e.g., FIFO picking, alerts, destruction process, waste tracking"></textarea>
+  </div>
+
+  <div class="field">
+    <label>Do lot items have additional attributes (e.g., color, size, batch info)?</label>
+    <textarea data-export="Lot Attributes" placeholder="Describe custom lot tracking fields needed"></textarea>
+  </div>
+</div>
+
+<!-- SECTION 7: Units of Measure -->
+<div class="section">
+  <h2>7. Units of Measure</h2>
+  <p class="section-desc">Measurement units and conversion rules for inventory and sales.</p>
+
+  <div class="field">
+    <label class="required">How many different units of measure do you use?</label>
+    <input type="number" data-export="UOM Count" placeholder="e.g., 8">
+  </div>
+
+  <div class="field">
+    <label class="required">List all units of measure used in your business</label>
+    <textarea data-export="UOM List" placeholder="e.g., Each (EA), Box (BX), Case (CS), Pound (LB), Kilogram (KG), Meter (M)"></textarea>
+  </div>
+
+  <div class="field">
+    <label>Do you use UOM groups (purchase UOM vs sales UOM vs stock UOM)?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="uom_groups" value="Yes - extensively" data-export="UOM Groups"><span>Yes - extensively</span></label>
+      <label><input type="radio" name="uom_groups" value="Yes - some items" data-export="UOM Groups"><span>Yes - some items</span></label>
+      <label><input type="radio" name="uom_groups" value="No - same for all" data-export="UOM Groups"><span>No - same for all</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>How many items have multi-UOM conversions?</label>
+    <input type="number" data-export="Multi-UOM Item Count" placeholder="e.g., 2500">
+  </div>
+
+  <div class="field">
+    <label>Examples of UOM conversions needed</label>
+    <textarea data-export="UOM Conversion Examples" placeholder="e.g., 1 Case = 12 Boxes, 1 Box = 24 Units, 1 Pallet = 40 Cases"></textarea>
+  </div>
+</div>
+
+<!-- SECTION 8: Pricing -->
+<div class="section">
+  <h2>8. Pricing</h2>
+  <p class="section-desc">Price levels, quantity pricing, and customer-specific pricing strategies.</p>
+
+  <div class="field">
+    <label class="required">How many price levels do you maintain?</label>
+    <input type="number" data-export="Price Level Count" placeholder="e.g., 5">
+  </div>
+
+  <div class="field">
+    <label class="required">Describe your price level structure</label>
+    <textarea data-export="Price Levels" placeholder="e.g., Standard, Wholesale, Retail, Partner, VIP"></textarea>
+  </div>
+
+  <div class="field">
+    <label>Do you use quantity-based pricing tiers?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="qty_pricing" value="Yes - all items" data-export="Quantity Pricing"><span>Yes - all items</span></label>
+      <label><input type="radio" name="qty_pricing" value="Yes - some items" data-export="Quantity Pricing"><span>Yes - some items</span></label>
+      <label><input type="radio" name="qty_pricing" value="No" data-export="Quantity Pricing"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you track customer-specific pricing?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="cust_pricing" value="Yes - many customers" data-export="Customer-Specific Pricing"><span>Yes - many customers</span></label>
+      <label><input type="radio" name="cust_pricing" value="Yes - some accounts" data-export="Customer-Specific Pricing"><span>Yes - key accounts only</span></label>
+      <label><input type="radio" name="cust_pricing" value="No" data-export="Customer-Specific Pricing"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do prices vary by currency?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="currency_pricing" value="Yes - different prices" data-export="Currency-Based Pricing"><span>Yes - different prices by currency</span></label>
+      <label><input type="radio" name="currency_pricing" value="Yes - converted dynamically" data-export="Currency-Based Pricing"><span>Yes - converted dynamically</span></label>
+      <label><input type="radio" name="currency_pricing" value="No - same worldwide" data-export="Currency-Based Pricing"><span>No - same worldwide</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you track promotional / seasonal pricing?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="promo_pricing" value="Yes - frequent" data-export="Promotional Pricing"><span>Yes - frequent promotions</span></label>
+      <label><input type="radio" name="promo_pricing" value="Yes - occasional" data-export="Promotional Pricing"><span>Yes - occasional</span></label>
+      <label><input type="radio" name="promo_pricing" value="No" data-export="Promotional Pricing"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do prices have effective date ranges?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="price_dates" value="Yes - tracked" data-export="Price Effective Dates"><span>Yes - tracked per price</span></label>
+      <label><input type="radio" name="price_dates" value="Yes - manual updates" data-export="Price Effective Dates"><span>Yes - manual updates</span></label>
+      <label><input type="radio" name="price_dates" value="No" data-export="Price Effective Dates"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you need to track margin by item?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="margin_tracking" value="Yes" data-export="Margin Tracking"><span>Yes</span></label>
+      <label><input type="radio" name="margin_tracking" value="No" data-export="Margin Tracking"><span>No</span></label>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 9: Item Data Migration -->
+<div class="section">
+  <h2>9. Item Data Migration</h2>
+  <p class="section-desc">Preparation and assessment of item data for migration to NetSuite.</p>
+
+  <div class="field">
+    <label class="required">Where does your current item master data reside?</label>
+    <input type="text" data-export="Current Item System" placeholder="e.g., QuickBooks, SAP, Excel, custom database">
+  </div>
+
+  <div class="field">
+    <label>What is the overall data quality of your item master?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="data_quality" value="Excellent - clean" data-export="Item Data Quality"><span>Excellent - well maintained</span></label>
+      <label><input type="radio" name="data_quality" value="Good - some cleanup" data-export="Item Data Quality"><span>Good - minor cleanup needed</span></label>
+      <label><input type="radio" name="data_quality" value="Fair - significant" data-export="Item Data Quality"><span>Fair - significant cleanup needed</span></label>
+      <label><input type="radio" name="data_quality" value="Poor - major issues" data-export="Item Data Quality"><span>Poor - major data quality issues</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>What item data will you migrate from the current system?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Item ID/SKU" data-export="Data to Migrate"><span>Item ID/SKU</span></label>
+      <label><input type="checkbox" value="Item Name" data-export="Data to Migrate"><span>Item Name/Description</span></label>
+      <label><input type="checkbox" value="Pricing" data-export="Data to Migrate"><span>Pricing</span></label>
+      <label><input type="checkbox" value="Cost" data-export="Data to Migrate"><span>Cost</span></label>
+      <label><input type="checkbox" value="Opening Balances" data-export="Data to Migrate"><span>Opening Balances</span></label>
+      <label><input type="checkbox" value="Item Images" data-export="Data to Migrate"><span>Item Images</span></label>
+      <label><input type="checkbox" value="Attachments" data-export="Data to Migrate"><span>Attachments/Documents</span></label>
+      <label><input type="checkbox" value="Custom Fields" data-export="Data to Migrate"><span>Custom Fields</span></label>
+      <label><input type="checkbox" value="Item History" data-export="Data to Migrate"><span>Historical Transactions</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you have item images or attachments to migrate?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="item_media" value="Yes - many" data-export="Item Images/Attachments"><span>Yes - many (100+)</span></label>
+      <label><input type="radio" name="item_media" value="Yes - some" data-export="Item Images/Attachments"><span>Yes - some (1-100)</span></label>
+      <label><input type="radio" name="item_media" value="No" data-export="Item Images/Attachments"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>How much historical item transaction data do you need?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="item_history" value="Full history" data-export="Item History Retained"><span>Full transaction history</span></label>
+      <label><input type="radio" name="item_history" value="Last 2 years" data-export="Item History Retained"><span>Last 2 years only</span></label>
+      <label><input type="radio" name="item_history" value="Opening balances only" data-export="Item History Retained"><span>Opening balances only</span></label>
+      <label><input type="radio" name="item_history" value="None" data-export="Item History Retained"><span>No history</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>What data cleanup or transformation is needed during migration?</label>
+    <textarea data-export="Migration Cleanup" placeholder="e.g., Consolidate duplicate items, standardize naming, map categories, update costs"></textarea>
+  </div>
+</div>
+
+<!-- SECTION 10: Additional Requirements -->
+<div class="section">
+  <h2>10. Additional Requirements</h2>
+  <p class="section-desc">Custom fields, workflows, and any other item management needs.</p>
+
+  <div class="field">
+    <label>What custom fields are needed on items?</label>
+    <textarea data-export="Custom Item Fields" placeholder="e.g., Supplier Color Code, Internal Cost Center, Quality Grade, Manufacturer Part Number"></textarea>
+  </div>
+
+  <div class="field">
+    <label>Do you need item-level approval workflows?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="item_workflows" value="Yes" data-export="Item Workflows"><span>Yes</span></label>
+      <label><input type="radio" name="item_workflows" value="No" data-export="Item Workflows"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>If yes, describe the workflow process</label>
+    <textarea data-export="Item Workflow Details" placeholder="e.g., New items require Finance approval, Item changes require category owner sign-off"></textarea>
+  </div>
+
+  <div class="field">
+    <label>Do you use vendor catalogs or vendor-supplied item data?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="vendor_catalogs" value="Yes - extensive" data-export="Vendor Catalogs"><span>Yes - extensive</span></label>
+      <label><input type="radio" name="vendor_catalogs" value="Yes - some" data-export="Vendor Catalogs"><span>Yes - some vendors</span></label>
+      <label><input type="radio" name="vendor_catalogs" value="No" data-export="Vendor Catalogs"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>How do you currently track item changes and revisions?</label>
+    <textarea data-export="Item Change Tracking" placeholder="e.g., Version control, audit trail, change log maintained elsewhere"></textarea>
+  </div>
+
+  <div class="field">
+    <label>Do you have inter-company item transactions?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="interco_items" value="Yes" data-export="Inter-company Items"><span>Yes</span></label>
+      <label><input type="radio" name="interco_items" value="No" data-export="Inter-company Items"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Any other item management requirements or notes</label>
+    <textarea data-export="Additional Item Notes" placeholder="Capture any other requirements discussed during the session"></textarea>
+  </div>
+</div>
+
+</div><!-- end container -->
+
+<div class="btn-bar">
+  <button class="btn btn-secondary" onclick="clearForm()">Clear Form</button>
+  <button class="btn btn-primary" onclick="exportToExcel()">Export to Excel</button>
+  <button class="btn btn-drive" id="btnDrive" onclick="saveToDrive()" disabled title="Loading Google Drive..."><span class="drive-icon">📁</span> Save to Google Drive</button>
+</div>
+
+<div class="toast" id="toast">Exported successfully!</div>
+
+<script>
+// Track progress
+function updateProgress() {
+  const fields = document.querySelectorAll('input[type="text"], input[type="number"], input[type="date"], select, textarea');
+  const radios = {};
+  document.querySelectorAll('input[type="radio"]').forEach(r => { if(r.checked) radios[r.name] = true; });
+  const checkboxes = {};
+  document.querySelectorAll('input[type="checkbox"]').forEach(c => { if(c.checked) checkboxes[c.closest('.field')?.querySelector('label')?.textContent || 'x'] = true; });
+  let filled = 0, total = 0;
+  fields.forEach(f => { total++; if(f.value.trim()) filled++; });
+  const radioGroups = new Set();
+  document.querySelectorAll('input[type="radio"]').forEach(r => radioGroups.add(r.name));
+  total += radioGroups.size;
+  filled += Object.keys(radios).length;
+  const pct = total > 0 ? Math.round((filled / total) * 100) : 0;
+  document.getElementById('progressPct').textContent = pct + '%';
+  document.getElementById('progressFill').style.width = pct + '%';
+}
+document.addEventListener('input', updateProgress);
+document.addEventListener('change', updateProgress);
+
+function exportToExcel() {
+  const data = [];
+  const sections = document.querySelectorAll('.section, .meta-section');
+  sections.forEach(section => {
+    const sectionTitle = section.querySelector('h2')?.textContent || '';
+    const fields = section.querySelectorAll('.field');
+    fields.forEach(field => {
+      const label = field.querySelector('label')?.textContent?.replace(' *', '') || '';
+      let value = '';
+      const input = field.querySelector('input[type="text"], input[type="number"], input[type="date"], select, textarea');
+      if (input) { value = input.value; }
+      const checkedRadio = field.querySelector('input[type="radio"]:checked');
+      if (checkedRadio) { value = checkedRadio.value; }
+      const checkedBoxes = field.querySelectorAll('input[type="checkbox"]:checked');
+      if (checkedBoxes.length > 0) { value = Array.from(checkedBoxes).map(c => c.value).join(', '); }
+      data.push({ 'Section': sectionTitle, 'Question': label, 'Response': value });
+    });
+  });
+  const ws = XLSX.utils.json_to_sheet(data);
+  ws['!cols'] = [{ wch: 30 }, { wch: 60 }, { wch: 60 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Item Management');
+  const clientName = document.querySelector('[data-export="Client Name"]')?.value || 'Client';
+  const date = new Date().toISOString().split('T')[0];
+  XLSX.writeFile(wb, `${clientName}_Item-Management_${date}.xlsx`);
+  showToast();
+}
+
+function clearForm() {
+  if (confirm('Are you sure you want to clear all fields?')) {
+    document.querySelectorAll('input[type="text"], input[type="number"], input[type="date"], textarea').forEach(f => f.value = '');
+    document.querySelectorAll('select').forEach(s => s.selectedIndex = 0);
+    document.querySelectorAll('input[type="radio"], input[type="checkbox"]').forEach(c => c.checked = false);
+    updateProgress();
+  }
+}
+
+function showToast() {
+  const t = document.getElementById('toast');
+  t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 2500);
+}
+</script>
+</body>
+</html>

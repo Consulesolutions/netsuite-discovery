@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NetSuite Discovery: Company Structure & Financials</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #f0f2f5; color: #1a1a2e; line-height: 1.6; }
+.header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); color: white; padding: 40px 20px; text-align: center; }
+.header h1 { font-size: 28px; margin-bottom: 8px; }
+.header p { opacity: 0.85; font-size: 15px; max-width: 600px; margin: 0 auto; }
+.container { max-width: 900px; margin: 30px auto; padding: 0 20px 60px; }
+.meta-section { background: white; border-radius: 12px; padding: 30px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.meta-section h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #0f3460; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #e8ecf1; }
+.section { background: white; border-radius: 12px; padding: 30px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.section h2 { font-size: 20px; color: #0f3460; margin-bottom: 6px; }
+.section .section-desc { color: #666; font-size: 14px; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 2px solid #e8ecf1; }
+.field { margin-bottom: 20px; }
+.field label { display: block; font-weight: 600; font-size: 14px; margin-bottom: 6px; color: #333; }
+.field .hint { font-size: 12px; color: #888; margin-bottom: 6px; font-style: italic; }
+.field input[type="text"], .field input[type="number"], .field input[type="date"], .field select, .field textarea {
+  width: 100%; padding: 10px 14px; border: 1.5px solid #d1d5db; border-radius: 8px; font-size: 14px; font-family: inherit; transition: border-color 0.2s; background: #fafbfc;
+}
+.field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: #0f3460; background: white; box-shadow: 0 0 0 3px rgba(15,52,96,0.08); }
+.field textarea { min-height: 80px; resize: vertical; }
+.radio-group, .checkbox-group { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 6px; }
+.radio-group label, .checkbox-group label { font-weight: 400; display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 6px 14px; border: 1.5px solid #d1d5db; border-radius: 8px; font-size: 14px; transition: all 0.2s; background: #fafbfc; }
+.radio-group label:hover, .checkbox-group label:hover { border-color: #0f3460; background: #f0f4ff; }
+.radio-group input:checked + span, .checkbox-group input:checked + span { color: #0f3460; font-weight: 600; }
+.radio-group label:has(input:checked), .checkbox-group label:has(input:checked) { border-color: #0f3460; background: #eef2ff; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 600px) { .grid-2 { grid-template-columns: 1fr; } }
+.btn-bar { position: sticky; bottom: 0; background: white; padding: 16px 20px; border-top: 1px solid #e5e7eb; display: flex; justify-content: center; gap: 12px; z-index: 10; }
+.btn { padding: 12px 32px; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+.btn-primary { background: #0f3460; color: white; }
+.btn-primary:hover { background: #1a4a7a; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(15,52,96,0.3); }
+.btn-secondary { background: #e8ecf1; color: #0f3460; }
+.btn-drive { background: #1a73e8; color: white; display: flex; align-items: center; gap: 8px; }
+.btn-drive:hover { background: #1557b0; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(26,115,232,0.3); }
+.btn-drive:disabled { background: #93c5fd; cursor: wait; }
+.drive-icon { font-size: 18px; }
+.btn-secondary:hover { background: #d1d8e4; }
+.required::after { content: ' *'; color: #e53e3e; }
+.progress-bar { background: #e8ecf1; height: 6px; border-radius: 3px; margin: 20px 0; overflow: hidden; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, #0f3460, #4a90d9); border-radius: 3px; transition: width 0.5s ease; }
+.progress-text { text-align: center; font-size: 13px; color: #666; margin-bottom: 10px; }
+.toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: #10b981; color: white; padding: 12px 24px; border-radius: 8px; font-weight: 600; z-index: 100; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+</style>
+<script src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
+<script src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
+<script src="drive-upload.js"></script>
+</head>
+<body>
+
+<div class="header">
+  <a href="index.html" style="color:rgba(255,255,255,0.7);text-decoration:none;font-size:13px;display:inline-block;margin-bottom:10px;">&larr; Back to all forms</a>
+  <h1>Company Structure & Financials</h1>
+  <p>NetSuite ERP Discovery Questionnaire — Complete all sections during the discovery session with the client</p>
+</div>
+
+<div class="container">
+
+<div class="meta-section">
+  <h2>Session Information</h2>
+  <div class="grid-2">
+    <div class="field"><label class="required">Client / Company Name</label><input type="text" data-export="Client Name"></div>
+    <div class="field"><label class="required">Completed By</label><input type="text" data-export="Completed By"></div>
+    <div class="field"><label>Date</label><input type="date" data-export="Date"></div>
+    <div class="field"><label>Session Attendees</label><input type="text" data-export="Attendees" placeholder="Names and roles"></div>
+  </div>
+</div>
+
+<div class="progress-text">Completion: <span id="progressPct">0%</span></div>
+<div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+
+<!-- SECTION 1: Legal Entity Structure -->
+<div class="section">
+  <h2>1. Legal Entity & Subsidiary Structure</h2>
+  <p class="section-desc">Understanding the organizational hierarchy and legal entities for NetSuite OneWorld setup.</p>
+
+  <div class="field">
+    <label class="required">How many legal entities / subsidiaries does the company have?</label>
+    <input type="number" data-export="Number of Subsidiaries" placeholder="e.g., 3">
+  </div>
+
+  <div class="field">
+    <label>List all subsidiaries / legal entities (name, country, and relationship)</label>
+    <textarea data-export="Subsidiary Details" placeholder="e.g., Parent Co (US), Sub A (Canada) - wholly owned, Sub B (UK) - 80% owned"></textarea>
+  </div>
+
+  <div class="field">
+    <label class="required">Is there inter-company activity between entities?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="intercompany" value="Yes" data-export="Inter-company Activity"><span>Yes</span></label>
+      <label><input type="radio" name="intercompany" value="No" data-export="Inter-company Activity"><span>No</span></label>
+      <label><input type="radio" name="intercompany" value="Planned" data-export="Inter-company Activity"><span>Planned</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>If yes, describe inter-company transactions (sales, cost allocations, management fees, etc.)</label>
+    <textarea data-export="Inter-company Details" placeholder="Describe types and frequency of inter-company transactions"></textarea>
+  </div>
+
+  <div class="field">
+    <label>Do you need consolidated financial reporting across entities?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="consolidation" value="Yes" data-export="Consolidation Required"><span>Yes</span></label>
+      <label><input type="radio" name="consolidation" value="No" data-export="Consolidation Required"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>What elimination entries are needed for consolidation?</label>
+    <textarea data-export="Elimination Entries" placeholder="e.g., inter-company receivables/payables, revenue/expense, inventory profit"></textarea>
+  </div>
+</div>
+
+<!-- SECTION 2: Organizational Segmentation -->
+<div class="section">
+  <h2>2. Organizational Segmentation</h2>
+  <p class="section-desc">Departments, classes, locations, and custom segments for reporting and tracking.</p>
+
+  <div class="field">
+    <label class="required">List all departments</label>
+    <textarea data-export="Departments" placeholder="e.g., Sales, Marketing, Engineering, Finance, Operations, HR, Customer Support"></textarea>
+  </div>
+
+  <div class="field">
+    <label>Do departments have a hierarchy (parent-child)?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="dept_hierarchy" value="Yes" data-export="Department Hierarchy"><span>Yes</span></label>
+      <label><input type="radio" name="dept_hierarchy" value="No" data-export="Department Hierarchy"><span>No - Flat</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label class="required">List all classes (product lines, business units, etc.)</label>
+    <textarea data-export="Classes" placeholder="e.g., Product Line A, Product Line B, Services, Internal"></textarea>
+  </div>
+
+  <div class="field">
+    <label class="required">List all locations (warehouses, offices, stores)</label>
+    <textarea data-export="Locations" placeholder="e.g., HQ - New York, Warehouse - Dallas, Office - London"></textarea>
+  </div>
+
+  <div class="field">
+    <label>Do you need custom segments beyond Department, Class, Location?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="custom_seg" value="Yes" data-export="Custom Segments Needed"><span>Yes</span></label>
+      <label><input type="radio" name="custom_seg" value="No" data-export="Custom Segments Needed"><span>No</span></label>
+      <label><input type="radio" name="custom_seg" value="Unsure" data-export="Custom Segments Needed"><span>Unsure</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>If yes, describe the custom segments needed</label>
+    <textarea data-export="Custom Segment Details" placeholder="e.g., Project, Grant, Region, Brand — what values and how used"></textarea>
+  </div>
+</div>
+
+<!-- SECTION 3: Chart of Accounts -->
+<div class="section">
+  <h2>3. Chart of Accounts</h2>
+  <p class="section-desc">Account structure, numbering conventions, and reporting requirements.</p>
+
+  <div class="field">
+    <label class="required">How many GL accounts are currently in use?</label>
+    <input type="text" data-export="GL Account Count" placeholder="e.g., ~250 active accounts">
+  </div>
+
+  <div class="field">
+    <label class="required">What account numbering convention do you use?</label>
+    <textarea data-export="Account Numbering" placeholder="e.g., 4-digit (1000-9999), 6-digit with sub-accounts, segmented numbering"></textarea>
+  </div>
+
+  <div class="field">
+    <label>Do you have sub-accounts (parent-child GL structure)?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="sub_accounts" value="Yes" data-export="Sub-accounts"><span>Yes</span></label>
+      <label><input type="radio" name="sub_accounts" value="No" data-export="Sub-accounts"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Can you provide your current chart of accounts export?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="coa_export" value="Yes - will provide" data-export="COA Export Available"><span>Yes - will provide</span></label>
+      <label><input type="radio" name="coa_export" value="No" data-export="COA Export Available"><span>No</span></label>
+      <label><input type="radio" name="coa_export" value="Needs cleanup first" data-export="COA Export Available"><span>Needs cleanup first</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Are there accounts you want to add, remove, or restructure during migration?</label>
+    <textarea data-export="COA Changes" placeholder="Describe any planned changes to the chart of accounts"></textarea>
+  </div>
+
+  <div class="field">
+    <label>What account types do you use?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Bank" data-export="Account Types"><span>Bank</span></label>
+      <label><input type="checkbox" value="AR" data-export="Account Types"><span>Accounts Receivable</span></label>
+      <label><input type="checkbox" value="AP" data-export="Account Types"><span>Accounts Payable</span></label>
+      <label><input type="checkbox" value="Fixed Asset" data-export="Account Types"><span>Fixed Asset</span></label>
+      <label><input type="checkbox" value="Other Asset" data-export="Account Types"><span>Other Asset</span></label>
+      <label><input type="checkbox" value="COGS" data-export="Account Types"><span>COGS</span></label>
+      <label><input type="checkbox" value="Expense" data-export="Account Types"><span>Expense</span></label>
+      <label><input type="checkbox" value="Income" data-export="Account Types"><span>Income</span></label>
+      <label><input type="checkbox" value="Other Income" data-export="Account Types"><span>Other Income</span></label>
+      <label><input type="checkbox" value="Equity" data-export="Account Types"><span>Equity</span></label>
+      <label><input type="checkbox" value="Deferred Revenue" data-export="Account Types"><span>Deferred Revenue</span></label>
+      <label><input type="checkbox" value="Statistical" data-export="Account Types"><span>Statistical</span></label>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 4: Multi-Currency -->
+<div class="section">
+  <h2>4. Multi-Currency</h2>
+  <p class="section-desc">Currency management, exchange rates, and foreign currency transactions.</p>
+
+  <div class="field">
+    <label class="required">What is the base (functional) currency?</label>
+    <input type="text" data-export="Base Currency" placeholder="e.g., USD">
+  </div>
+
+  <div class="field">
+    <label>Do you transact in multiple currencies?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="multi_currency" value="Yes" data-export="Multi-Currency"><span>Yes</span></label>
+      <label><input type="radio" name="multi_currency" value="No" data-export="Multi-Currency"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>If yes, list all transaction currencies</label>
+    <textarea data-export="Transaction Currencies" placeholder="e.g., USD, EUR, GBP, CAD, AUD"></textarea>
+  </div>
+
+  <div class="field">
+    <label>How do you currently manage exchange rates?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="fx_rates" value="Manual" data-export="Exchange Rate Method"><span>Manual entry</span></label>
+      <label><input type="radio" name="fx_rates" value="Auto feed" data-export="Exchange Rate Method"><span>Auto rate feed</span></label>
+      <label><input type="radio" name="fx_rates" value="Fixed rates" data-export="Exchange Rate Method"><span>Fixed/contracted rates</span></label>
+      <label><input type="radio" name="fx_rates" value="Not applicable" data-export="Exchange Rate Method"><span>N/A</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you need to revalue foreign currency balances?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="fx_reval" value="Yes - monthly" data-export="Currency Revaluation"><span>Yes - monthly</span></label>
+      <label><input type="radio" name="fx_reval" value="Yes - quarterly" data-export="Currency Revaluation"><span>Yes - quarterly</span></label>
+      <label><input type="radio" name="fx_reval" value="No" data-export="Currency Revaluation"><span>No</span></label>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 5: Tax Configuration -->
+<div class="section">
+  <h2>5. Tax Configuration</h2>
+  <p class="section-desc">Sales tax, VAT, use tax, and tax compliance requirements.</p>
+
+  <div class="field">
+    <label class="required">What types of tax apply to your business?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="US Sales Tax" data-export="Tax Types"><span>US Sales Tax</span></label>
+      <label><input type="checkbox" value="US Use Tax" data-export="Tax Types"><span>US Use Tax</span></label>
+      <label><input type="checkbox" value="VAT" data-export="Tax Types"><span>VAT (International)</span></label>
+      <label><input type="checkbox" value="GST" data-export="Tax Types"><span>GST</span></label>
+      <label><input type="checkbox" value="Withholding" data-export="Tax Types"><span>Withholding Tax</span></label>
+      <label><input type="checkbox" value="Excise" data-export="Tax Types"><span>Excise Tax</span></label>
+      <label><input type="checkbox" value="None" data-export="Tax Types"><span>Tax Exempt</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you use a third-party tax engine?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="tax_engine" value="Avalara" data-export="Tax Engine"><span>Avalara</span></label>
+      <label><input type="radio" name="tax_engine" value="Vertex" data-export="Tax Engine"><span>Vertex</span></label>
+      <label><input type="radio" name="tax_engine" value="Thomson Reuters" data-export="Tax Engine"><span>Thomson Reuters</span></label>
+      <label><input type="radio" name="tax_engine" value="NetSuite SuiteTax" data-export="Tax Engine"><span>NetSuite SuiteTax</span></label>
+      <label><input type="radio" name="tax_engine" value="Manual" data-export="Tax Engine"><span>Manual / None</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>How many tax jurisdictions / nexus states do you operate in?</label>
+    <input type="text" data-export="Tax Jurisdictions" placeholder="e.g., 12 US states, 3 countries">
+  </div>
+
+  <div class="field">
+    <label>Do you have tax-exempt customers?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="tax_exempt" value="Yes" data-export="Tax Exempt Customers"><span>Yes</span></label>
+      <label><input type="radio" name="tax_exempt" value="No" data-export="Tax Exempt Customers"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Describe any special tax scenarios or requirements</label>
+    <textarea data-export="Special Tax Requirements" placeholder="e.g., drop-ship taxation, marketplace facilitator, tax holiday handling"></textarea>
+  </div>
+</div>
+
+<!-- SECTION 6: Financial Reporting -->
+<div class="section">
+  <h2>6. Financial Reporting & Period Close</h2>
+  <p class="section-desc">Reporting requirements, fiscal calendar, and close process.</p>
+
+  <div class="field">
+    <label class="required">What is your fiscal year end?</label>
+    <div class="grid-2">
+      <select data-export="Fiscal Year End Month">
+        <option value="">Select month...</option>
+        <option>January</option><option>February</option><option>March</option><option>April</option>
+        <option>May</option><option>June</option><option>July</option><option>August</option>
+        <option>September</option><option>October</option><option>November</option><option>December</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="field">
+    <label class="required">What fiscal calendar do you use?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="fiscal_cal" value="Standard Monthly" data-export="Fiscal Calendar"><span>Standard Monthly (12 months)</span></label>
+      <label><input type="radio" name="fiscal_cal" value="4-4-5" data-export="Fiscal Calendar"><span>4-4-5 Weekly</span></label>
+      <label><input type="radio" name="fiscal_cal" value="4-5-4" data-export="Fiscal Calendar"><span>4-5-4 Weekly</span></label>
+      <label><input type="radio" name="fiscal_cal" value="13 Period" data-export="Fiscal Calendar"><span>13 Period</span></label>
+      <label><input type="radio" name="fiscal_cal" value="Custom" data-export="Fiscal Calendar"><span>Custom</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>What financial reports do you currently produce?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="P&L" data-export="Financial Reports"><span>Income Statement / P&L</span></label>
+      <label><input type="checkbox" value="Balance Sheet" data-export="Financial Reports"><span>Balance Sheet</span></label>
+      <label><input type="checkbox" value="Cash Flow" data-export="Financial Reports"><span>Cash Flow Statement</span></label>
+      <label><input type="checkbox" value="Trial Balance" data-export="Financial Reports"><span>Trial Balance</span></label>
+      <label><input type="checkbox" value="Budget vs Actual" data-export="Financial Reports"><span>Budget vs. Actual</span></label>
+      <label><input type="checkbox" value="Departmental P&L" data-export="Financial Reports"><span>Departmental P&L</span></label>
+      <label><input type="checkbox" value="Consolidated" data-export="Financial Reports"><span>Consolidated Statements</span></label>
+      <label><input type="checkbox" value="Board Pack" data-export="Financial Reports"><span>Board/Investor Reports</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>What is your target close timeline?</label>
+    <input type="text" data-export="Close Timeline" placeholder="e.g., Soft close by day 5, hard close by day 10">
+  </div>
+
+  <div class="field">
+    <label>Do you use accounting periods / period locking?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="period_lock" value="Yes" data-export="Period Locking"><span>Yes</span></label>
+      <label><input type="radio" name="period_lock" value="No" data-export="Period Locking"><span>No</span></label>
+      <label><input type="radio" name="period_lock" value="Plan to" data-export="Period Locking"><span>Plan to implement</span></label>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 7: Budgeting -->
+<div class="section">
+  <h2>7. Budgeting & Forecasting</h2>
+  <p class="section-desc">Budget management, forecasting methods, and variance tracking.</p>
+
+  <div class="field">
+    <label>Do you currently do budgeting?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="budgeting" value="Yes - in current ERP" data-export="Budgeting"><span>Yes - in current ERP</span></label>
+      <label><input type="radio" name="budgeting" value="Yes - in spreadsheets" data-export="Budgeting"><span>Yes - in spreadsheets</span></label>
+      <label><input type="radio" name="budgeting" value="Yes - third party" data-export="Budgeting"><span>Yes - third-party tool</span></label>
+      <label><input type="radio" name="budgeting" value="No" data-export="Budgeting"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>If using a third-party budgeting tool, which one?</label>
+    <input type="text" data-export="Budget Tool" placeholder="e.g., Adaptive Planning, Vena, Planful">
+  </div>
+
+  <div class="field">
+    <label>At what level do you budget?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="GL Account" data-export="Budget Level"><span>GL Account</span></label>
+      <label><input type="checkbox" value="Department" data-export="Budget Level"><span>Department</span></label>
+      <label><input type="checkbox" value="Class" data-export="Budget Level"><span>Class</span></label>
+      <label><input type="checkbox" value="Location" data-export="Budget Level"><span>Location</span></label>
+      <label><input type="checkbox" value="Project" data-export="Budget Level"><span>Project</span></label>
+      <label><input type="checkbox" value="Subsidiary" data-export="Budget Level"><span>Subsidiary</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>How frequently do you update forecasts?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="forecast_freq" value="Monthly" data-export="Forecast Frequency"><span>Monthly</span></label>
+      <label><input type="radio" name="forecast_freq" value="Quarterly" data-export="Forecast Frequency"><span>Quarterly</span></label>
+      <label><input type="radio" name="forecast_freq" value="Annually" data-export="Forecast Frequency"><span>Annually only</span></label>
+      <label><input type="radio" name="forecast_freq" value="Rolling" data-export="Forecast Frequency"><span>Rolling forecast</span></label>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 8: Banking & Payments -->
+<div class="section">
+  <h2>8. Banking & Payment Processing</h2>
+  <p class="section-desc">Bank accounts, payment methods, and reconciliation processes.</p>
+
+  <div class="field">
+    <label class="required">How many bank accounts does the company have?</label>
+    <input type="number" data-export="Bank Account Count" placeholder="e.g., 5">
+  </div>
+
+  <div class="field">
+    <label>List bank accounts (bank name, currency, purpose)</label>
+    <textarea data-export="Bank Account Details" placeholder="e.g., Chase Operating (USD), Chase Payroll (USD), HSBC (GBP)"></textarea>
+  </div>
+
+  <div class="field">
+    <label>How do you process outgoing payments?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="ACH" data-export="Payment Methods Out"><span>ACH</span></label>
+      <label><input type="checkbox" value="Wire" data-export="Payment Methods Out"><span>Wire Transfer</span></label>
+      <label><input type="checkbox" value="Check" data-export="Payment Methods Out"><span>Check</span></label>
+      <label><input type="checkbox" value="Credit Card" data-export="Payment Methods Out"><span>Corporate Credit Card</span></label>
+      <label><input type="checkbox" value="Virtual Card" data-export="Payment Methods Out"><span>Virtual Card</span></label>
+      <label><input type="checkbox" value="EFT" data-export="Payment Methods Out"><span>EFT</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>How do you accept incoming payments?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="ACH" data-export="Payment Methods In"><span>ACH</span></label>
+      <label><input type="checkbox" value="Wire" data-export="Payment Methods In"><span>Wire</span></label>
+      <label><input type="checkbox" value="Check" data-export="Payment Methods In"><span>Check</span></label>
+      <label><input type="checkbox" value="Credit Card" data-export="Payment Methods In"><span>Credit Card</span></label>
+      <label><input type="checkbox" value="PayPal" data-export="Payment Methods In"><span>PayPal</span></label>
+      <label><input type="checkbox" value="Stripe" data-export="Payment Methods In"><span>Stripe</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you import bank statements for reconciliation?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="bank_import" value="Yes - bank feed" data-export="Bank Statement Import"><span>Yes - bank feed</span></label>
+      <label><input type="radio" name="bank_import" value="Yes - CSV/OFX" data-export="Bank Statement Import"><span>Yes - CSV/OFX upload</span></label>
+      <label><input type="radio" name="bank_import" value="Manual" data-export="Bank Statement Import"><span>Manual reconciliation</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>How frequently do you reconcile bank accounts?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="bank_rec_freq" value="Daily" data-export="Bank Reconciliation Frequency"><span>Daily</span></label>
+      <label><input type="radio" name="bank_rec_freq" value="Weekly" data-export="Bank Reconciliation Frequency"><span>Weekly</span></label>
+      <label><input type="radio" name="bank_rec_freq" value="Monthly" data-export="Bank Reconciliation Frequency"><span>Monthly</span></label>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 9: Current Systems -->
+<div class="section">
+  <h2>9. Current Systems & Integrations</h2>
+  <p class="section-desc">Existing ERP/accounting systems and integration requirements.</p>
+
+  <div class="field">
+    <label class="required">What is the current accounting / ERP system?</label>
+    <input type="text" data-export="Current ERP" placeholder="e.g., QuickBooks, Sage, SAP, Dynamics, spreadsheets">
+  </div>
+
+  <div class="field">
+    <label>How long have you been on the current system?</label>
+    <input type="text" data-export="Current System Duration" placeholder="e.g., 5 years">
+  </div>
+
+  <div class="field">
+    <label>What are the top pain points with the current system?</label>
+    <textarea data-export="Current System Pain Points" placeholder="Describe the main issues driving the move to NetSuite"></textarea>
+  </div>
+
+  <div class="field">
+    <label>What other systems need to integrate with NetSuite?</label>
+    <textarea data-export="Integration Requirements" placeholder="e.g., Shopify (ecommerce), Salesforce (CRM), ADP (payroll), Expensify (expenses)"></textarea>
+  </div>
+
+  <div class="field">
+    <label>What historical data do you need migrated?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="COA" data-export="Data Migration"><span>Chart of Accounts</span></label>
+      <label><input type="checkbox" value="Opening Balances" data-export="Data Migration"><span>Opening Balances</span></label>
+      <label><input type="checkbox" value="Customers" data-export="Data Migration"><span>Customers</span></label>
+      <label><input type="checkbox" value="Vendors" data-export="Data Migration"><span>Vendors</span></label>
+      <label><input type="checkbox" value="Items" data-export="Data Migration"><span>Items</span></label>
+      <label><input type="checkbox" value="Open AR" data-export="Data Migration"><span>Open AR</span></label>
+      <label><input type="checkbox" value="Open AP" data-export="Data Migration"><span>Open AP</span></label>
+      <label><input type="checkbox" value="Historical Transactions" data-export="Data Migration"><span>Historical Transactions</span></label>
+      <label><input type="checkbox" value="Fixed Assets" data-export="Data Migration"><span>Fixed Assets</span></label>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 10: Additional Notes -->
+<div class="section">
+  <h2>10. Additional Notes & Requirements</h2>
+  <p class="section-desc">Anything else relevant to the Company Structure & Financials configuration.</p>
+
+  <div class="field">
+    <label>Roles and permissions requirements</label>
+    <textarea data-export="Roles & Permissions" placeholder="e.g., Finance Manager, AP Clerk, Controller, Auditor — what should each role access?"></textarea>
+  </div>
+
+  <div class="field">
+    <label>Approval workflows needed</label>
+    <textarea data-export="Approval Workflows" placeholder="e.g., JE approvals over $5K, vendor bill approvals by department head"></textarea>
+  </div>
+
+  <div class="field">
+    <label>Audit / compliance requirements</label>
+    <textarea data-export="Audit Requirements" placeholder="e.g., SOX compliance, external audit, specific regulatory requirements"></textarea>
+  </div>
+
+  <div class="field">
+    <label>Any other notes or requirements</label>
+    <textarea data-export="Additional Notes" placeholder="Capture any other requirements discussed during the session"></textarea>
+  </div>
+</div>
+
+</div><!-- end container -->
+
+<div class="btn-bar">
+  <button class="btn btn-secondary" onclick="clearForm()">Clear Form</button>
+  <button class="btn btn-primary" onclick="exportToExcel()">Export to Excel</button>
+  <button class="btn btn-drive" id="btnDrive" onclick="saveToDrive()" disabled title="Loading Google Drive..."><span class="drive-icon">📁</span> Save to Google Drive</button>
+</div>
+
+<div class="toast" id="toast">Exported successfully!</div>
+
+<script>
+// Track progress
+function updateProgress() {
+  const fields = document.querySelectorAll('input[type="text"], input[type="number"], input[type="date"], select, textarea');
+  const radios = {};
+  document.querySelectorAll('input[type="radio"]').forEach(r => { if(r.checked) radios[r.name] = true; });
+  const checkboxes = {};
+  document.querySelectorAll('input[type="checkbox"]').forEach(c => { if(c.checked) checkboxes[c.closest('.field')?.querySelector('label')?.textContent || 'x'] = true; });
+  let filled = 0, total = 0;
+  fields.forEach(f => { total++; if(f.value.trim()) filled++; });
+  const radioGroups = new Set();
+  document.querySelectorAll('input[type="radio"]').forEach(r => radioGroups.add(r.name));
+  total += radioGroups.size;
+  filled += Object.keys(radios).length;
+  const pct = total > 0 ? Math.round((filled / total) * 100) : 0;
+  document.getElementById('progressPct').textContent = pct + '%';
+  document.getElementById('progressFill').style.width = pct + '%';
+}
+document.addEventListener('input', updateProgress);
+document.addEventListener('change', updateProgress);
+
+function exportToExcel() {
+  const data = [];
+  const sections = document.querySelectorAll('.section, .meta-section');
+  sections.forEach(section => {
+    const sectionTitle = section.querySelector('h2')?.textContent || '';
+    const fields = section.querySelectorAll('.field');
+    fields.forEach(field => {
+      const label = field.querySelector('label')?.textContent?.replace(' *', '') || '';
+      let value = '';
+      const input = field.querySelector('input[type="text"], input[type="number"], input[type="date"], select, textarea');
+      if (input) { value = input.value; }
+      const checkedRadio = field.querySelector('input[type="radio"]:checked');
+      if (checkedRadio) { value = checkedRadio.value; }
+      const checkedBoxes = field.querySelectorAll('input[type="checkbox"]:checked');
+      if (checkedBoxes.length > 0) { value = Array.from(checkedBoxes).map(c => c.value).join(', '); }
+      data.push({ 'Section': sectionTitle, 'Question': label, 'Response': value });
+    });
+  });
+  const ws = XLSX.utils.json_to_sheet(data);
+  ws['!cols'] = [{ wch: 30 }, { wch: 60 }, { wch: 60 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Company Structure & Financials');
+  const clientName = document.querySelector('[data-export="Client Name"]')?.value || 'Client';
+  const date = new Date().toISOString().split('T')[0];
+  XLSX.writeFile(wb, `${clientName}_Company-Structure-Financials_${date}.xlsx`);
+  showToast();
+}
+
+function clearForm() {
+  if (confirm('Are you sure you want to clear all fields?')) {
+    document.querySelectorAll('input[type="text"], input[type="number"], input[type="date"], textarea').forEach(f => f.value = '');
+    document.querySelectorAll('select').forEach(s => s.selectedIndex = 0);
+    document.querySelectorAll('input[type="radio"], input[type="checkbox"]').forEach(c => c.checked = false);
+    updateProgress();
+  }
+}
+
+function showToast() {
+  const t = document.getElementById('toast');
+  t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 2500);
+}
+</script>
+</body>
+</html>

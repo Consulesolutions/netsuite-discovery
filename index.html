@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Consule Solutions — NetSuite ERP Discovery</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #f0f2f5; color: #1a1a2e; line-height: 1.6; }
+.header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); color: white; padding: 60px 20px; text-align: center; }
+.header h1 { font-size: 36px; margin-bottom: 12px; font-weight: 700; }
+.header p { opacity: 0.85; font-size: 17px; max-width: 650px; margin: 0 auto; }
+.header .badge { display: inline-block; background: rgba(255,255,255,0.15); padding: 6px 16px; border-radius: 20px; font-size: 13px; margin-bottom: 16px; letter-spacing: 0.5px; }
+.container { max-width: 1000px; margin: -40px auto 60px; padding: 0 20px; position: relative; z-index: 1; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+.card { background: white; border-radius: 14px; padding: 28px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); transition: all 0.3s ease; cursor: pointer; text-decoration: none; color: inherit; display: flex; flex-direction: column; border: 2px solid transparent; }
+.card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,0.12); border-color: #0f3460; }
+.card .icon { font-size: 36px; margin-bottom: 14px; }
+.card h3 { font-size: 18px; color: #0f3460; margin-bottom: 8px; }
+.card p { font-size: 14px; color: #666; flex-grow: 1; }
+.card .tag { display: inline-block; background: #eef2ff; color: #0f3460; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; margin-top: 14px; }
+.instructions { background: white; border-radius: 14px; padding: 30px; margin-bottom: 30px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+.instructions h2 { font-size: 20px; color: #0f3460; margin-bottom: 14px; }
+.instructions ol { padding-left: 24px; }
+.instructions li { margin-bottom: 10px; font-size: 15px; color: #444; }
+.instructions li strong { color: #1a1a2e; }
+.footer { text-align: center; padding: 30px; color: #999; font-size: 13px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="badge">CONSULE SOLUTIONS</div>
+  <h1>NetSuite ERP Discovery</h1>
+  <p>Standardized requirement gathering forms for NetSuite implementation projects. Select an area below to begin your discovery session.</p>
+</div>
+
+<div class="container">
+
+<div class="instructions">
+  <h2>How to Use</h2>
+  <ol>
+    <li><strong>Select a discovery area</strong> below to open the questionnaire</li>
+    <li><strong>Fill in the Session Info</strong> at the top (client name, your name, date, attendees)</li>
+    <li><strong>Complete each section</strong> during the discovery session — track progress with the bar at the top</li>
+    <li><strong>Save your work</strong> — click "Save to Google Drive" to upload the completed form directly to the project folder, or "Export to Excel" to download locally</li>
+  </ol>
+</div>
+
+<div class="grid">
+
+  <a href="01-Company-Structure-Financials.html" class="card">
+    <div class="icon">🏢</div>
+    <h3>Company Structure & Financials</h3>
+    <p>Legal entities, subsidiaries, chart of accounts, multi-currency, tax, fiscal calendar, banking, and financial reporting setup.</p>
+    <span class="tag">10 sections</span>
+  </a>
+
+  <a href="02-Item-Management.html" class="card">
+    <div class="icon">📦</div>
+    <h3>Item Management</h3>
+    <p>Inventory items, non-inventory, assemblies, BOMs, lot/serial tracking, units of measure, pricing, and costing methods.</p>
+    <span class="tag">10 sections</span>
+  </a>
+
+  <a href="03-Procure-to-Pay.html" class="card">
+    <div class="icon">🛒</div>
+    <h3>Procure to Pay</h3>
+    <p>Vendor management, purchase orders, approvals, receiving, AP processing, 3-way match, and payment runs.</p>
+    <span class="tag">10 sections</span>
+  </a>
+
+  <a href="04-Order-to-Cash.html" class="card">
+    <div class="icon">💰</div>
+    <h3>Order to Cash</h3>
+    <p>Customer management, sales orders, pricing, fulfillment, invoicing, AR, collections, returns, and revenue recognition.</p>
+    <span class="tag">10 sections</span>
+  </a>
+
+  <a href="05-Work-Order-Assembly-Build.html" class="card">
+    <div class="icon">🔧</div>
+    <h3>Work Order / Assembly Build</h3>
+    <p>Assembly items, BOM management, work order processes, component issuance, builds, and production costing.</p>
+    <span class="tag">10 sections</span>
+  </a>
+
+  <a href="06-CRM.html" class="card">
+    <div class="icon">🤝</div>
+    <h3>CRM</h3>
+    <p>Leads, opportunities, pipeline management, campaigns, case management, activities, and customer communication.</p>
+    <span class="tag">10 sections</span>
+  </a>
+
+  <a href="07-Demand-Planning-MRP.html" class="card">
+    <div class="icon">📊</div>
+    <h3>Demand Planning / MRP</h3>
+    <p>Demand forecasting, MRP configuration, reorder points, safety stock, supply planning, and procurement automation.</p>
+    <span class="tag">10 sections</span>
+  </a>
+
+  <a href="08-Work-Order-WIP-Routing.html" class="card">
+    <div class="icon">⚙️</div>
+    <h3>Work Order / WIP & Routing</h3>
+    <p>Production routing, work centers, operations, labor tracking, WIP valuation, shop floor control, and variance analysis.</p>
+    <span class="tag">10 sections</span>
+  </a>
+
+</div>
+</div>
+
+<div class="footer">
+  Consule Solutions LLC — NetSuite ERP Implementation Discovery Tools
+</div>
+
+</body>
+</html>

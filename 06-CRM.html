@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NetSuite Discovery: CRM</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #f0f2f5; color: #1a1a2e; line-height: 1.6; }
+.header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); color: white; padding: 40px 20px; text-align: center; }
+.header h1 { font-size: 28px; margin-bottom: 8px; }
+.header p { opacity: 0.85; font-size: 15px; max-width: 600px; margin: 0 auto; }
+.container { max-width: 900px; margin: 30px auto; padding: 0 20px 60px; }
+.meta-section { background: white; border-radius: 12px; padding: 30px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.meta-section h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #0f3460; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #e8ecf1; }
+.section { background: white; border-radius: 12px; padding: 30px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.section h2 { font-size: 20px; color: #0f3460; margin-bottom: 6px; }
+.section .section-desc { color: #666; font-size: 14px; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 2px solid #e8ecf1; }
+.field { margin-bottom: 20px; }
+.field label { display: block; font-weight: 600; font-size: 14px; margin-bottom: 6px; color: #333; }
+.field .hint { font-size: 12px; color: #888; margin-bottom: 6px; font-style: italic; }
+.field input[type="text"], .field input[type="number"], .field input[type="date"], .field select, .field textarea {
+  width: 100%; padding: 10px 14px; border: 1.5px solid #d1d5db; border-radius: 8px; font-size: 14px; font-family: inherit; transition: border-color 0.2s; background: #fafbfc;
+}
+.field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: #0f3460; background: white; box-shadow: 0 0 0 3px rgba(15,52,96,0.08); }
+.field textarea { min-height: 80px; resize: vertical; }
+.radio-group, .checkbox-group { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 6px; }
+.radio-group label, .checkbox-group label { font-weight: 400; display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 6px 14px; border: 1.5px solid #d1d5db; border-radius: 8px; font-size: 14px; transition: all 0.2s; background: #fafbfc; }
+.radio-group label:hover, .checkbox-group label:hover { border-color: #0f3460; background: #f0f4ff; }
+.radio-group input:checked + span, .checkbox-group input:checked + span { color: #0f3460; font-weight: 600; }
+.radio-group label:has(input:checked), .checkbox-group label:has(input:checked) { border-color: #0f3460; background: #eef2ff; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 600px) { .grid-2 { grid-template-columns: 1fr; } }
+.btn-bar { position: sticky; bottom: 0; background: white; padding: 16px 20px; border-top: 1px solid #e5e7eb; display: flex; justify-content: center; gap: 12px; z-index: 10; }
+.btn { padding: 12px 32px; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+.btn-primary { background: #0f3460; color: white; }
+.btn-primary:hover { background: #1a4a7a; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(15,52,96,0.3); }
+.btn-secondary { background: #e8ecf1; color: #0f3460; }
+.btn-drive { background: #1a73e8; color: white; display: flex; align-items: center; gap: 8px; }
+.btn-drive:hover { background: #1557b0; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(26,115,232,0.3); }
+.btn-drive:disabled { background: #93c5fd; cursor: wait; }
+.drive-icon { font-size: 18px; }
+.btn-secondary:hover { background: #d1d8e4; }
+.required::after { content: ' *'; color: #e53e3e; }
+.progress-bar { background: #e8ecf1; height: 6px; border-radius: 3px; margin: 20px 0; overflow: hidden; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, #0f3460, #4a90d9); border-radius: 3px; transition: width 0.5s ease; }
+.progress-text { text-align: center; font-size: 13px; color: #666; margin-bottom: 10px; }
+.toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: #10b981; color: white; padding: 12px 24px; border-radius: 8px; font-weight: 600; z-index: 100; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+</style>
+<script src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
+<script src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
+<script src="drive-upload.js"></script>
+</head>
+<body>
+
+<div class="header">
+  <a href="index.html" style="color:rgba(255,255,255,0.7);text-decoration:none;font-size:13px;display:inline-block;margin-bottom:10px;">&larr; Back to all forms</a>
+  <h1>CRM</h1>
+  <p>NetSuite ERP Discovery Questionnaire — Leads, Opportunities, Campaigns, Cases, and Customer Relationship Management</p>
+</div>
+
+<div class="container">
+
+<div class="meta-section">
+  <h2>Session Information</h2>
+  <div class="grid-2">
+    <div class="field"><label class="required">Client / Company Name</label><input type="text" data-export="Client Name"></div>
+    <div class="field"><label class="required">Completed By</label><input type="text" data-export="Completed By"></div>
+    <div class="field"><label>Date</label><input type="date" data-export="Date"></div>
+    <div class="field"><label>Session Attendees</label><input type="text" data-export="Attendees" placeholder="Names and roles"></div>
+  </div>
+</div>
+
+<div class="progress-text">Completion: <span id="progressPct">0%</span></div>
+<div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+
+<!-- SECTION 1: Lead Management -->
+<div class="section">
+  <h2>1. Lead Management</h2>
+  <p class="section-desc">Understanding lead capture, scoring, assignment, and qualification processes.</p>
+
+  <div class="field">
+    <label class="required">What are your primary lead sources?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Website Forms" data-export="Lead Sources"><span>Website Forms</span></label>
+      <label><input type="checkbox" value="Trade Shows" data-export="Lead Sources"><span>Trade Shows</span></label>
+      <label><input type="checkbox" value="Referrals" data-export="Lead Sources"><span>Referrals</span></label>
+      <label><input type="checkbox" value="Purchased Lists" data-export="Lead Sources"><span>Purchased Lists</span></label>
+      <label><input type="checkbox" value="Social Media" data-export="Lead Sources"><span>Social Media</span></label>
+      <label><input type="checkbox" value="Webinars" data-export="Lead Sources"><span>Webinars</span></label>
+      <label><input type="checkbox" value="Email Campaigns" data-export="Lead Sources"><span>Email Campaigns</span></label>
+      <label><input type="checkbox" value="Inbound Calls" data-export="Lead Sources"><span>Inbound Calls</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you use lead scoring?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="lead_scoring" value="Yes - automated" data-export="Lead Scoring"><span>Yes - automated rules</span></label>
+      <label><input type="radio" name="lead_scoring" value="Yes - manual" data-export="Lead Scoring"><span>Yes - manual scoring</span></label>
+      <label><input type="radio" name="lead_scoring" value="No" data-export="Lead Scoring"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>If using lead scoring, describe the scoring criteria and thresholds</label>
+    <textarea data-export="Lead Scoring Criteria" placeholder="e.g., Company size (10 pts), Industry match (5 pts), Email open (2 pts) — threshold 25 for sales-ready"></textarea>
+  </div>
+
+  <div class="field">
+    <label>How are leads assigned to sales reps?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="lead_assignment" value="Manual" data-export="Lead Assignment Method"><span>Manual assignment</span></label>
+      <label><input type="radio" name="lead_assignment" value="Automated rules" data-export="Lead Assignment Method"><span>Automated rules (territory, round-robin, etc.)</span></label>
+      <label><input type="radio" name="lead_assignment" value="Hybrid" data-export="Lead Assignment Method"><span>Hybrid approach</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>What is your lead qualification process (from lead to opportunity)?</label>
+    <textarea data-export="Lead Qualification Process" placeholder="e.g., BANT (Budget, Authority, Need, Timeline) scoring, qualification calls, needs analysis meeting"></textarea>
+  </div>
+
+  <div class="field">
+    <label>What is your average lead-to-customer conversion rate?</label>
+    <input type="text" data-export="Lead to Customer Conversion Rate" placeholder="e.g., 2-5%, or unknown">
+  </div>
+
+  <div class="field">
+    <label>Do you need lead enrichment (company info, firmographics)?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="lead_enrichment" value="Yes - third party" data-export="Lead Enrichment"><span>Yes - third-party service</span></label>
+      <label><input type="radio" name="lead_enrichment" value="Yes - manual" data-export="Lead Enrichment"><span>Yes - manual research</span></label>
+      <label><input type="radio" name="lead_enrichment" value="No" data-export="Lead Enrichment"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Describe your lead nurturing strategy (follow-up sequence, frequency)</label>
+    <textarea data-export="Lead Nurturing Strategy" placeholder="e.g., Auto drip campaign of 5 emails over 30 days, weekly call attempts if no response"></textarea>
+  </div>
+</div>
+
+<!-- SECTION 2: Opportunity & Pipeline Management -->
+<div class="section">
+  <h2>2. Opportunity & Pipeline Management</h2>
+  <p class="section-desc">Sales stages, pipeline tracking, and forecasting methodology.</p>
+
+  <div class="field">
+    <label class="required">Define your sales stages / pipeline stages</label>
+    <textarea data-export="Sales Stages" placeholder="e.g., Lead, Prospect, Qualified Lead, Proposal, Negotiation, Closed Won/Lost"></textarea>
+  </div>
+
+  <div class="field">
+    <label>What win probability % do you assign to each stage?</label>
+    <textarea data-export="Stage Probabilities" placeholder="e.g., Prospect 10%, Qualified 25%, Proposal 50%, Negotiation 75%, Closed Won 100%"></textarea>
+  </div>
+
+  <div class="field">
+    <label class="required">How do you calculate weighted pipeline forecast?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="pipeline_calc" value="Opportunity Amount x Probability %" data-export="Pipeline Calculation"><span>Opportunity Amount x Probability %</span></label>
+      <label><input type="radio" name="pipeline_calc" value="All open opportunities equal weight" data-export="Pipeline Calculation"><span>All open opportunities equal</span></label>
+      <label><input type="radio" name="pipeline_calc" value="Manager adjustment" data-export="Pipeline Calculation"><span>Manager adjustment to amounts</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>What types of opportunities do you track?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="New Business" data-export="Opportunity Types"><span>New Business</span></label>
+      <label><input type="checkbox" value="Expansion" data-export="Opportunity Types"><span>Expansion</span></label>
+      <label><input type="checkbox" value="Renewal" data-export="Opportunity Types"><span>Renewal</span></label>
+      <label><input type="checkbox" value="Cross-sell" data-export="Opportunity Types"><span>Cross-sell</span></label>
+      <label><input type="checkbox" value="Upsell" data-export="Opportunity Types"><span>Upsell</span></label>
+      <label><input type="checkbox" value="Maintenance" data-export="Opportunity Types"><span>Maintenance</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you track competitor information in opportunities?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="competitor_tracking" value="Yes - detailed" data-export="Competitor Tracking"><span>Yes - detailed tracking</span></label>
+      <label><input type="radio" name="competitor_tracking" value="Yes - basic" data-export="Competitor Tracking"><span>Yes - basic competitor list</span></label>
+      <label><input type="radio" name="competitor_tracking" value="No" data-export="Competitor Tracking"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you conduct win/loss analysis?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="win_loss" value="Yes - formal analysis" data-export="Win Loss Analysis"><span>Yes - formal process</span></label>
+      <label><input type="radio" name="win_loss" value="Yes - informal" data-export="Win Loss Analysis"><span>Yes - informal notes</span></label>
+      <label><input type="radio" name="win_loss" value="No" data-export="Win Loss Analysis"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>How do you forecast sales (method and frequency)?</label>
+    <textarea data-export="Sales Forecasting Method" placeholder="e.g., Bottom-up by rep, weekly updates, commits vs. pipeline, seasonal adjustments"></textarea>
+  </div>
+
+  <div class="field">
+    <label>What is the average sales cycle length (days)?</label>
+    <input type="text" data-export="Sales Cycle Length" placeholder="e.g., 30-60 days, varies by product">
+  </div>
+</div>
+
+<!-- SECTION 3: Sales Process -->
+<div class="section">
+  <h2>3. Sales Process</h2>
+  <p class="section-desc">Sales team structure, territory management, and activity tracking.</p>
+
+  <div class="field">
+    <label class="required">How is your sales team structured?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="sales_structure" value="By territory" data-export="Sales Team Structure"><span>By territory</span></label>
+      <label><input type="radio" name="sales_structure" value="By industry/vertical" data-export="Sales Team Structure"><span>By industry/vertical</span></label>
+      <label><input type="radio" name="sales_structure" value="By product" data-export="Sales Team Structure"><span>By product line</span></label>
+      <label><input type="radio" name="sales_structure" value="Mixed/Matrix" data-export="Sales Team Structure"><span>Mixed/Matrix structure</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label class="required">How many sales reps do you have?</label>
+    <input type="number" data-export="Number of Sales Reps" placeholder="e.g., 12">
+  </div>
+
+  <div class="field">
+    <label>Do you have territory management defined?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="territory_mgmt" value="Yes - by geography" data-export="Territory Management"><span>Yes - by geography</span></label>
+      <label><input type="radio" name="territory_mgmt" value="Yes - by account" data-export="Territory Management"><span>Yes - by account/segment</span></label>
+      <label><input type="radio" name="territory_mgmt" value="No formal process" data-export="Territory Management"><span>No formal process</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you use quota management?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="quota_mgmt" value="Yes - individual quotas" data-export="Quota Management"><span>Yes - individual quotas</span></label>
+      <label><input type="radio" name="quota_mgmt" value="Yes - team quotas" data-export="Quota Management"><span>Yes - team quotas</span></label>
+      <label><input type="radio" name="quota_mgmt" value="No" data-export="Quota Management"><span>No formal quotas</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Describe your commission structure</label>
+    <textarea data-export="Commission Structure" placeholder="e.g., 5% on new business, 2% on renewals, accelerator at 110% quota, tiered by product"></textarea>
+  </div>
+
+  <div class="field">
+    <label class="required">What sales activities do you track?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Phone Calls" data-export="Sales Activities"><span>Phone Calls</span></label>
+      <label><input type="checkbox" value="Meetings" data-export="Sales Activities"><span>Meetings</span></label>
+      <label><input type="checkbox" value="Tasks" data-export="Sales Activities"><span>Tasks/To-dos</span></label>
+      <label><input type="checkbox" value="Emails" data-export="Sales Activities"><span>Emails</span></label>
+      <label><input type="checkbox" value="Proposals" data-export="Sales Activities"><span>Proposals sent</span></label>
+      <label><input type="checkbox" value="Demos" data-export="Sales Activities"><span>Demos/Presentations</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>How do you manage sales call scheduling and follow-up?</label>
+    <textarea data-export="Call Management" placeholder="e.g., Built-in call log in CRM, calendar integration, reminders set"></textarea>
+  </div>
+
+  <div class="field">
+    <label>Do you use activity reminders or activity-based workflows?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="activity_reminders" value="Yes - automated" data-export="Activity Reminders"><span>Yes - automated reminders</span></label>
+      <label><input type="radio" name="activity_reminders" value="Yes - manual" data-export="Activity Reminders"><span>Yes - manual setting</span></label>
+      <label><input type="radio" name="activity_reminders" value="No" data-export="Activity Reminders"><span>No</span></label>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 4: Campaign Management -->
+<div class="section">
+  <h2>4. Campaign Management</h2>
+  <p class="section-desc">Marketing campaigns, ROI tracking, and campaign-to-opportunity attribution.</p>
+
+  <div class="field">
+    <label class="required">What types of marketing campaigns do you run?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Email Campaigns" data-export="Campaign Types"><span>Email Campaigns</span></label>
+      <label><input type="checkbox" value="Events" data-export="Campaign Types"><span>Events (webinars, conferences)</span></label>
+      <label><input type="checkbox" value="Direct Mail" data-export="Campaign Types"><span>Direct Mail</span></label>
+      <label><input type="checkbox" value="Print Ads" data-export="Campaign Types"><span>Print Ads</span></label>
+      <label><input type="checkbox" value="Social Media" data-export="Campaign Types"><span>Social Media</span></label>
+      <label><input type="checkbox" value="Content Marketing" data-export="Campaign Types"><span>Content Marketing</span></label>
+      <label><input type="checkbox" value="Partner Programs" data-export="Campaign Types"><span>Partner Programs</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you track ROI by campaign?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="campaign_roi" value="Yes - detailed ROI" data-export="Campaign ROI Tracking"><span>Yes - detailed ROI calculation</span></label>
+      <label><input type="radio" name="campaign_roi" value="Yes - basic metrics" data-export="Campaign ROI Tracking"><span>Yes - basic metrics (cost, leads)</span></label>
+      <label><input type="radio" name="campaign_roi" value="No" data-export="Campaign ROI Tracking"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>How do you track campaign-to-opportunity attribution?</label>
+    <textarea data-export="Campaign Attribution" placeholder="e.g., First-touch, last-touch, multi-touch, influence model"></textarea>
+  </div>
+
+  <div class="field">
+    <label>Do you use email marketing natively in NetSuite or third-party?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="email_marketing" value="NetSuite native" data-export="Email Marketing Platform"><span>NetSuite native</span></label>
+      <label><input type="radio" name="email_marketing" value="Mailchimp" data-export="Email Marketing Platform"><span>Mailchimp</span></label>
+      <label><input type="radio" name="email_marketing" value="HubSpot" data-export="Email Marketing Platform"><span>HubSpot</span></label>
+      <label><input type="radio" name="email_marketing" value="Pardot" data-export="Email Marketing Platform"><span>Pardot</span></label>
+      <label><input type="radio" name="email_marketing" value="Other" data-export="Email Marketing Platform"><span>Other (specify)</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>If using third-party email platform, specify</label>
+    <input type="text" data-export="Email Platform Other" placeholder="e.g., ActiveCampaign, ConvertKit">
+  </div>
+
+  <div class="field">
+    <label>Do you use drip/nurture campaigns?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="drip_campaigns" value="Yes" data-export="Drip Campaigns"><span>Yes</span></label>
+      <label><input type="radio" name="drip_campaigns" value="Planned" data-export="Drip Campaigns"><span>Planned</span></label>
+      <label><input type="radio" name="drip_campaigns" value="No" data-export="Drip Campaigns"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>How do you segment audiences for campaigns?</label>
+    <textarea data-export="Audience Segmentation" placeholder="e.g., By industry, company size, product interest, engagement level, geographic location"></textarea>
+  </div>
+
+  <div class="field">
+    <label>What are your key campaign metrics?</label>
+    <textarea data-export="Campaign Metrics" placeholder="e.g., Open rate, click rate, conversion to lead, cost per lead, cost per opportunity"></textarea>
+  </div>
+</div>
+
+<!-- SECTION 5: Case/Support Management -->
+<div class="section">
+  <h2>5. Case/Support Management</h2>
+  <p class="section-desc">Case creation, assignment, resolution, and escalation workflows.</p>
+
+  <div class="field">
+    <label class="required">What channels do customers use to create cases?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Email" data-export="Case Creation Channels"><span>Email</span></label>
+      <label><input type="checkbox" value="Phone" data-export="Case Creation Channels"><span>Phone</span></label>
+      <label><input type="checkbox" value="Web Form" data-export="Case Creation Channels"><span>Web Form</span></label>
+      <label><input type="checkbox" value="Customer Portal" data-export="Case Creation Channels"><span>Customer Portal</span></label>
+      <label><input type="checkbox" value="Chat" data-export="Case Creation Channels"><span>Chat/Messenger</span></label>
+      <label><input type="checkbox" value="Social Media" data-export="Case Creation Channels"><span>Social Media</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>How are cases assigned to support staff?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="case_assignment" value="Manual" data-export="Case Assignment"><span>Manual assignment</span></label>
+      <label><input type="radio" name="case_assignment" value="Automated rules" data-export="Case Assignment"><span>Automated rules (round-robin, skill-based)</span></label>
+      <label><input type="radio" name="case_assignment" value="Queue-based" data-export="Case Assignment"><span>Queue-based assignment</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you use case priority and/or severity levels?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="case_priority" value="Yes - both" data-export="Case Priority Levels"><span>Yes - both priority and severity</span></label>
+      <label><input type="radio" name="case_priority" value="Yes - priority only" data-export="Case Priority Levels"><span>Yes - priority only</span></label>
+      <label><input type="radio" name="case_priority" value="No" data-export="Case Priority Levels"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Define your case priority/severity levels and response SLAs</label>
+    <textarea data-export="Case SLAs" placeholder="e.g., Critical: 1hr response, 4hr resolution; High: 4hr response, 24hr resolution; Normal: 24hr response, 72hr resolution"></textarea>
+  </div>
+
+  <div class="field">
+    <label>Do you have case escalation rules?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="case_escalation" value="Yes - automated" data-export="Case Escalation"><span>Yes - automated escalation</span></label>
+      <label><input type="radio" name="case_escalation" value="Yes - manual" data-export="Case Escalation"><span>Yes - manual escalation</span></label>
+      <label><input type="radio" name="case_escalation" value="No formal process" data-export="Case Escalation"><span>No formal process</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Describe your case resolution workflow</label>
+    <textarea data-export="Case Resolution Workflow" placeholder="e.g., Triage, research/investigate, communicate solution, customer confirms, close case"></textarea>
+  </div>
+
+  <div class="field">
+    <label>Do you maintain a knowledge base for self-service?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="knowledge_base" value="Yes - in NetSuite" data-export="Knowledge Base"><span>Yes - in NetSuite</span></label>
+      <label><input type="radio" name="knowledge_base" value="Yes - external" data-export="Knowledge Base"><span>Yes - external tool</span></label>
+      <label><input type="radio" name="knowledge_base" value="No" data-export="Knowledge Base"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>What metrics do you track for support cases?</label>
+    <textarea data-export="Case Metrics" placeholder="e.g., First response time, resolution time, customer satisfaction, case volume by category"></textarea>
+  </div>
+</div>
+
+<!-- SECTION 6: Customer Portal / Self-Service -->
+<div class="section">
+  <h2>6. Customer Portal / Self-Service</h2>
+  <p class="section-desc">Customer self-service capabilities and portal features.</p>
+
+  <div class="field">
+    <label class="required">Do you need a customer portal?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="customer_portal" value="Yes - currently have" data-export="Customer Portal Need"><span>Yes - currently have</span></label>
+      <label><input type="radio" name="customer_portal" value="Yes - need to build" data-export="Customer Portal Need"><span>Yes - need to build</span></label>
+      <label><input type="radio" name="customer_portal" value="No" data-export="Customer Portal Need"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>What features should the customer portal include?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Order Status" data-export="Portal Features"><span>Order Status</span></label>
+      <label><input type="checkbox" value="Invoice View" data-export="Portal Features"><span>Invoice View & Download</span></label>
+      <label><input type="checkbox" value="Case Creation" data-export="Portal Features"><span>Case Creation</span></label>
+      <label><input type="checkbox" value="Case Status" data-export="Portal Features"><span>Case Status Tracking</span></label>
+      <label><input type="checkbox" value="Knowledge Base" data-export="Portal Features"><span>Knowledge Base Access</span></label>
+      <label><input type="checkbox" value="Document Library" data-export="Portal Features"><span>Document Library</span></label>
+      <label><input type="checkbox" value="Payment" data-export="Portal Features"><span>Payment/Billing</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>How do customers log in to the portal?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="portal_login" value="Username/Password" data-export="Portal Login"><span>Username/Password</span></label>
+      <label><input type="radio" name="portal_login" value="SSO" data-export="Portal Login"><span>SSO (single sign-on)</span></label>
+      <label><input type="radio" name="portal_login" value="Email link" data-export="Portal Login"><span>Email link / passwordless</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>How many customer portal users do you expect?</label>
+    <input type="number" data-export="Portal User Count" placeholder="e.g., 500 users">
+  </div>
+</div>
+
+<!-- SECTION 7: Contact & Activity Management -->
+<div class="section">
+  <h2>7. Contact & Activity Management</h2>
+  <p class="section-desc">Contact roles, activity tracking, and communication integration.</p>
+
+  <div class="field">
+    <label class="required">What contact roles do you track?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Decision Maker" data-export="Contact Roles"><span>Decision Maker</span></label>
+      <label><input type="checkbox" value="Economic Buyer" data-export="Contact Roles"><span>Economic Buyer</span></label>
+      <label><input type="checkbox" value="Influencer" data-export="Contact Roles"><span>Influencer</span></label>
+      <label><input type="checkbox" value="User/End User" data-export="Contact Roles"><span>User/End User</span></label>
+      <label><input type="checkbox" value="Champion" data-export="Contact Roles"><span>Champion/Advocate</span></label>
+      <label><input type="checkbox" value="Technical Evaluator" data-export="Contact Roles"><span>Technical Evaluator</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label class="required">What activity types do you track?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Calls" data-export="Activity Types"><span>Calls</span></label>
+      <label><input type="checkbox" value="Meetings" data-export="Activity Types"><span>Meetings</span></label>
+      <label><input type="checkbox" value="Tasks" data-export="Activity Types"><span>Tasks</span></label>
+      <label><input type="checkbox" value="Emails" data-export="Activity Types"><span>Emails</span></label>
+      <label><input type="checkbox" value="Notes" data-export="Activity Types"><span>Notes</span></label>
+      <label><input type="checkbox" value="Event Attendance" data-export="Activity Types"><span>Event Attendance</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you integrate email with NetSuite CRM?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="email_integration" value="Gmail" data-export="Email Integration"><span>Gmail sync</span></label>
+      <label><input type="radio" name="email_integration" value="Outlook" data-export="Email Integration"><span>Outlook sync</span></label>
+      <label><input type="radio" name="email_integration" value="Both" data-export="Email Integration"><span>Both Gmail and Outlook</span></label>
+      <label><input type="radio" name="email_integration" value="No integration" data-export="Email Integration"><span>No email integration</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you sync calendar with NetSuite?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="calendar_sync" value="Yes" data-export="Calendar Sync"><span>Yes</span></label>
+      <label><input type="radio" name="calendar_sync" value="No" data-export="Calendar Sync"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>How do you want to manage activity reminders?</label>
+    <textarea data-export="Activity Reminder Management" placeholder="e.g., In-app notifications, email alerts, calendar pop-ups, daily digest"></textarea>
+  </div>
+
+  <div class="field">
+    <label>Do you need call recording integration or call center integration?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="call_integration" value="Yes - call recording" data-export="Call Integration"><span>Yes - call recording</span></label>
+      <label><input type="radio" name="call_integration" value="Yes - CTI/Call Center" data-export="Call Integration"><span>Yes - CTI / Call Center</span></label>
+      <label><input type="radio" name="call_integration" value="No" data-export="Call Integration"><span>No</span></label>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 8: Reporting & Dashboards -->
+<div class="section">
+  <h2>8. Reporting & Dashboards</h2>
+  <p class="section-desc">CRM reporting, dashboards, and KPI tracking.</p>
+
+  <div class="field">
+    <label class="required">What CRM reports do you need?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Sales Pipeline" data-export="CRM Reports"><span>Sales Pipeline Report</span></label>
+      <label><input type="checkbox" value="Activity Report" data-export="CRM Reports"><span>Activity Report</span></label>
+      <label><input type="checkbox" value="Win/Loss Analysis" data-export="CRM Reports"><span>Win/Loss Analysis</span></label>
+      <label><input type="checkbox" value="Rep Performance" data-export="CRM Reports"><span>Sales Rep Performance</span></label>
+      <label><input type="checkbox" value="Campaign ROI" data-export="CRM Reports"><span>Campaign ROI Report</span></label>
+      <label><input type="checkbox" value="Forecast Accuracy" data-export="CRM Reports"><span>Forecast Accuracy</span></label>
+      <label><input type="checkbox" value="Customer Health" data-export="CRM Reports"><span>Customer Health Score</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label class="required">What key dashboards do you need?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Executive Dashboard" data-export="CRM Dashboards"><span>Executive Dashboard</span></label>
+      <label><input type="checkbox" value="Sales Manager Dashboard" data-export="CRM Dashboards"><span>Sales Manager Dashboard</span></label>
+      <label><input type="checkbox" value="Sales Rep Dashboard" data-export="CRM Dashboards"><span>Individual Sales Rep Dashboard</span></label>
+      <label><input type="checkbox" value="Pipeline Dashboard" data-export="CRM Dashboards"><span>Pipeline Dashboard</span></label>
+      <label><input type="checkbox" value="Support Dashboard" data-export="CRM Dashboards"><span>Support/Case Dashboard</span></label>
+      <label><input type="checkbox" value="Marketing Dashboard" data-export="CRM Dashboards"><span>Marketing Dashboard</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>What KPIs are most important to your business?</label>
+    <textarea data-export="CRM KPIs" placeholder="e.g., Win rate, sales cycle length, deal size, forecast accuracy, customer lifetime value, churn rate"></textarea>
+  </div>
+
+  <div class="field">
+    <label>Do you need real-time dashboards or are daily/weekly updates sufficient?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="dashboard_refresh" value="Real-time" data-export="Dashboard Refresh Frequency"><span>Real-time</span></label>
+      <label><input type="radio" name="dashboard_refresh" value="Hourly" data-export="Dashboard Refresh Frequency"><span>Hourly</span></label>
+      <label><input type="radio" name="dashboard_refresh" value="Daily" data-export="Dashboard Refresh Frequency"><span>Daily</span></label>
+      <label><input type="radio" name="dashboard_refresh" value="Weekly" data-export="Dashboard Refresh Frequency"><span>Weekly</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Do you need customer satisfaction / NPS tracking?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="satisfaction_tracking" value="Yes" data-export="Customer Satisfaction Tracking"><span>Yes</span></label>
+      <label><input type="radio" name="satisfaction_tracking" value="No" data-export="Customer Satisfaction Tracking"><span>No</span></label>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 9: Current CRM System -->
+<div class="section">
+  <h2>9. Current CRM System</h2>
+  <p class="section-desc">Current CRM platform and data migration requirements.</p>
+
+  <div class="field">
+    <label class="required">What is your current CRM system?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="current_crm" value="Salesforce" data-export="Current CRM"><span>Salesforce</span></label>
+      <label><input type="radio" name="current_crm" value="HubSpot" data-export="Current CRM"><span>HubSpot</span></label>
+      <label><input type="radio" name="current_crm" value="Pipedrive" data-export="Current CRM"><span>Pipedrive</span></label>
+      <label><input type="radio" name="current_crm" value="Zoho" data-export="Current CRM"><span>Zoho</span></label>
+      <label><input type="radio" name="current_crm" value="Microsoft Dynamics" data-export="Current CRM"><span>Microsoft Dynamics</span></label>
+      <label><input type="radio" name="current_crm" value="Spreadsheets" data-export="Current CRM"><span>Spreadsheets</span></label>
+      <label><input type="radio" name="current_crm" value="Other" data-export="Current CRM"><span>Other (specify)</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>If other CRM, specify</label>
+    <input type="text" data-export="Current CRM Other" placeholder="e.g., Copper, Insightly">
+  </div>
+
+  <div class="field">
+    <label>How long have you been using the current CRM?</label>
+    <input type="text" data-export="Current CRM Duration" placeholder="e.g., 3 years">
+  </div>
+
+  <div class="field">
+    <label class="required">What data do you need to migrate to NetSuite?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Leads" data-export="CRM Data Migration"><span>Leads</span></label>
+      <label><input type="checkbox" value="Contacts" data-export="CRM Data Migration"><span>Contacts</span></label>
+      <label><input type="checkbox" value="Accounts/Companies" data-export="CRM Data Migration"><span>Accounts/Companies</span></label>
+      <label><input type="checkbox" value="Opportunities" data-export="CRM Data Migration"><span>Opportunities</span></label>
+      <label><input type="checkbox" value="Activities" data-export="CRM Data Migration"><span>Activities</span></label>
+      <label><input type="checkbox" value="Campaigns" data-export="CRM Data Migration"><span>Campaigns</span></label>
+      <label><input type="checkbox" value="Cases" data-export="CRM Data Migration"><span>Cases</span></label>
+      <label><input type="checkbox" value="Custom Fields" data-export="CRM Data Migration"><span>Custom Fields</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Approximately how many records need to be migrated?</label>
+    <textarea data-export="Migration Record Count" placeholder="e.g., 50K leads, 5K active contacts, 2K open opportunities, 100K activities"></textarea>
+  </div>
+
+  <div class="field">
+    <label>What integrations does your current CRM have that need to be maintained or replaced?</label>
+    <textarea data-export="Current CRM Integrations" placeholder="e.g., Slack, Google Workspace, marketing automation, ecommerce, support ticketing"></textarea>
+  </div>
+
+  <div class="field">
+    <label>What works well with your current system?</label>
+    <textarea data-export="Current System Strengths" placeholder="Describe features, capabilities, or processes working well"></textarea>
+  </div>
+
+  <div class="field">
+    <label>What are the main pain points / limitations with your current CRM?</label>
+    <textarea data-export="Current System Pain Points" placeholder="Describe the main issues driving the move to NetSuite CRM"></textarea>
+  </div>
+</div>
+
+<!-- SECTION 10: Additional Requirements -->
+<div class="section">
+  <h2>10. Additional Requirements</h2>
+  <p class="section-desc">Custom configurations, automations, and integrations.</p>
+
+  <div class="field">
+    <label>Do you need custom fields in any CRM objects?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="custom_fields" value="Yes" data-export="Custom Fields Needed"><span>Yes</span></label>
+      <label><input type="radio" name="custom_fields" value="No" data-export="Custom Fields Needed"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>If yes, describe the custom fields needed</label>
+    <textarea data-export="Custom Fields Details" placeholder="e.g., Lead Source Detail, Industry Vertical, Customer Health Score, Deal Stage (custom), Company Size"></textarea>
+  </div>
+
+  <div class="field">
+    <label>What workflow automations do you need?</label>
+    <textarea data-export="Workflow Automations" placeholder="e.g., Auto-create task when opportunity stage changes, send email to customer on case creation, reassign leads after X days of inactivity"></textarea>
+  </div>
+
+  <div class="field">
+    <label>Do you need mobile CRM access?</label>
+    <div class="radio-group">
+      <label><input type="radio" name="mobile_crm" value="Yes - iOS and Android" data-export="Mobile CRM"><span>Yes - iOS and Android</span></label>
+      <label><input type="radio" name="mobile_crm" value="Yes - iOS only" data-export="Mobile CRM"><span>Yes - iOS only</span></label>
+      <label><input type="radio" name="mobile_crm" value="Yes - Android only" data-export="Mobile CRM"><span>Yes - Android only</span></label>
+      <label><input type="radio" name="mobile_crm" value="No" data-export="Mobile CRM"><span>No</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>What third-party integrations do you need?</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" value="Slack" data-export="Third Party Integrations"><span>Slack</span></label>
+      <label><input type="checkbox" value="Google Workspace" data-export="Third Party Integrations"><span>Google Workspace</span></label>
+      <label><input type="checkbox" value="Microsoft 365" data-export="Third Party Integrations"><span>Microsoft 365</span></label>
+      <label><input type="checkbox" value="Zapier" data-export="Third Party Integrations"><span>Zapier</span></label>
+      <label><input type="checkbox" value="Marketing Automation" data-export="Third Party Integrations"><span>Marketing Automation</span></label>
+      <label><input type="checkbox" value="Accounting Integration" data-export="Third Party Integrations"><span>Accounting Integration</span></label>
+      <label><input type="checkbox" value="Ecommerce" data-export="Third Party Integrations"><span>Ecommerce Platform</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Describe any other integrations needed</label>
+    <input type="text" data-export="Additional Integrations" placeholder="e.g., Zendesk, LiveChat, Typeform, custom API">
+  </div>
+
+  <div class="field">
+    <label>Are there any specific compliance or data governance requirements?</label>
+    <textarea data-export="Compliance Requirements" placeholder="e.g., GDPR, CCPA, SOC 2, data retention policies, field-level security"></textarea>
+  </div>
+
+  <div class="field">
+    <label>Any additional notes or requirements</label>
+    <textarea data-export="Additional Notes" placeholder="Capture any other CRM requirements discussed during the session"></textarea>
+  </div>
+</div>
+
+</div><!-- end container -->
+
+<div class="btn-bar">
+  <button class="btn btn-secondary" onclick="clearForm()">Clear Form</button>
+  <button class="btn btn-primary" onclick="exportToExcel()">Export to Excel</button>
+  <button class="btn btn-drive" id="btnDrive" onclick="saveToDrive()" disabled title="Loading Google Drive..."><span class="drive-icon">📁</span> Save to Google Drive</button>
+</div>
+
+<div class="toast" id="toast">Exported successfully!</div>
+
+<script>
+// Track progress
+function updateProgress() {
+  const fields = document.querySelectorAll('input[type="text"], input[type="number"], input[type="date"], select, textarea');
+  const radios = {};
+  document.querySelectorAll('input[type="radio"]').forEach(r => { if(r.checked) radios[r.name] = true; });
+  const checkboxes = {};
+  document.querySelectorAll('input[type="checkbox"]').forEach(c => { if(c.checked) checkboxes[c.closest('.field')?.querySelector('label')?.textContent || 'x'] = true; });
+  let filled = 0, total = 0;
+  fields.forEach(f => { total++; if(f.value.trim()) filled++; });
+  const radioGroups = new Set();
+  document.querySelectorAll('input[type="radio"]').forEach(r => radioGroups.add(r.name));
+  total += radioGroups.size;
+  filled += Object.keys(radios).length;
+  const pct = total > 0 ? Math.round((filled / total) * 100) : 0;
+  document.getElementById('progressPct').textContent = pct + '%';
+  document.getElementById('progressFill').style.width = pct + '%';
+}
+document.addEventListener('input', updateProgress);
+document.addEventListener('change', updateProgress);
+
+function exportToExcel() {
+  const data = [];
+  const sections = document.querySelectorAll('.section, .meta-section');
+  sections.forEach(section => {
+    const sectionTitle = section.querySelector('h2')?.textContent || '';
+    const fields = section.querySelectorAll('.field');
+    fields.forEach(field => {
+      const label = field.querySelector('label')?.textContent?.replace(' *', '') || '';
+      let value = '';
+      const input = field.querySelector('input[type="text"], input[type="number"], input[type="date"], select, textarea');
+      if (input) { value = input.value; }
+      const checkedRadio = field.querySelector('input[type="radio"]:checked');
+      if (checkedRadio) { value = checkedRadio.value; }
+      const checkedBoxes = field.querySelectorAll('input[type="checkbox"]:checked');
+      if (checkedBoxes.length > 0) { value = Array.from(checkedBoxes).map(c => c.value).join(', '); }
+      data.push({ 'Section': sectionTitle, 'Question': label, 'Response': value });
+    });
+  });
+  const ws = XLSX.utils.json_to_sheet(data);
+  ws['!cols'] = [{ wch: 30 }, { wch: 60 }, { wch: 60 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'CRM');
+  const clientName = document.querySelector('[data-export="Client Name"]')?.value || 'Client';
+  const date = new Date().toISOString().split('T')[0];
+  XLSX.writeFile(wb, `${clientName}_CRM_${date}.xlsx`);
+  showToast();
+}
+
+function clearForm() {
+  if (confirm('Are you sure you want to clear all fields?')) {
+    document.querySelectorAll('input[type="text"], input[type="number"], input[type="date"], textarea').forEach(f => f.value = '');
+    document.querySelectorAll('select').forEach(s => s.selectedIndex = 0);
+    document.querySelectorAll('input[type="radio"], input[type="checkbox"]').forEach(c => c.checked = false);
+    updateProgress();
+  }
+}
+
+function showToast() {
+  const t = document.getElementById('toast');
+  t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 2500);
+}
+</script>
+</body>
+</html>
