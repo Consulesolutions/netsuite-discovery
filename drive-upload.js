@@ -4,45 +4,64 @@
 const GOOGLE_CLIENT_ID = '270115083105-4e9s8e3rnsia2m7eha0nu5qalugm3l65.apps.googleusercontent.com';
 const GOOGLE_API_KEY = 'AIzaSyAIXZhDT5tJRk0i3Kbe_HMcbvZpG1Ma_rI';
 const SCOPES = 'https://www.googleapis.com/auth/drive.file';
-const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
 
 let tokenClient;
 let accessToken = null;
 let gapiInited = false;
 let gisInited = false;
 
-// Load Google API client
+// Load Google API client — only load Picker (skip client library)
 function gapiLoaded() {
-  gapi.load('client:picker', initGapiClient);
-}
-
-async function initGapiClient() {
-  await gapi.client.init({
-    apiKey: GOOGLE_API_KEY,
-    discoveryDocs: [DISCOVERY_DOC],
+  console.log('[Drive] gapi script loaded, loading picker...');
+  gapi.load('picker', {
+    callback: function() {
+      console.log('[Drive] Picker library loaded successfully');
+      gapiInited = true;
+      maybeEnableDriveButton();
+    },
+    onerror: function() {
+      console.error('[Drive] Failed to load Picker library');
+      showDriveError('Failed to load Google Picker');
+    }
   });
-  gapiInited = true;
-  maybeEnableDriveButton();
 }
 
 // Load Google Identity Services
 function gisLoaded() {
-  tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: GOOGLE_CLIENT_ID,
-    scope: SCOPES,
-    callback: '', // defined at request time
-  });
-  gisInited = true;
-  maybeEnableDriveButton();
+  console.log('[Drive] GIS script loaded, initializing token client...');
+  try {
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope: SCOPES,
+      callback: '', // defined at request time
+    });
+    gisInited = true;
+    console.log('[Drive] Token client initialized successfully');
+    maybeEnableDriveButton();
+  } catch(e) {
+    console.error('[Drive] Failed to init token client:', e);
+    showDriveError('Failed to initialize Google auth');
+  }
 }
 
 function maybeEnableDriveButton() {
+  console.log('[Drive] Check ready: gapi=' + gapiInited + ', gis=' + gisInited);
   if (gapiInited && gisInited) {
     const btn = document.getElementById('btnDrive');
     if (btn) {
       btn.disabled = false;
       btn.title = 'Save to Google Drive';
+      btn.innerHTML = '<span class="drive-icon">📁</span> Save to Google Drive';
+      console.log('[Drive] Button enabled!');
     }
+  }
+}
+
+function showDriveError(msg) {
+  const btn = document.getElementById('btnDrive');
+  if (btn) {
+    btn.innerHTML = '<span class="drive-icon">⚠️</span> ' + msg;
+    btn.disabled = true;
   }
 }
 
@@ -55,14 +74,27 @@ function saveToDrive() {
 
   tokenClient.callback = async (response) => {
     if (response.error) {
+      console.error('[Drive] Auth error:', response);
       btn.innerHTML = originalText;
       btn.disabled = false;
-      showToast('Authentication failed. Please try again.', 'error');
+      showToast('Authentication failed: ' + response.error, 'error');
       return;
     }
     accessToken = response.access_token;
+    console.log('[Drive] Got access token, opening picker...');
     btn.innerHTML = '<span class="drive-icon">📁</span> Choose folder...';
     createPicker();
+  };
+
+  tokenClient.error_callback = (err) => {
+    console.error('[Drive] Token error:', err);
+    btn.innerHTML = originalText;
+    btn.disabled = false;
+    if (err.type === 'popup_closed') {
+      showToast('Sign-in window was closed. Try again.', 'error');
+    } else {
+      showToast('Authentication error. Try again.', 'error');
+    }
   };
 
   if (accessToken === null) {
@@ -73,15 +105,18 @@ function saveToDrive() {
 }
 
 function createPicker() {
+  const view = new google.picker.DocsView(google.picker.ViewId.FOLDERS)
+    .setIncludeFolders(true)
+    .setSelectFolderEnabled(true);
+
   const picker = new google.picker.PickerBuilder()
     .setTitle('Select a folder to save the discovery document')
-    .addView(new google.picker.DocsView()
-      .setIncludeFolders(true)
-      .setSelectFolderEnabled(true)
-      .setMimeTypes('application/vnd.google-apps.folder'))
+    .addView(view)
+    .enableFeature(google.picker.Feature.NAV_HIDDEN)
     .setOAuthToken(accessToken)
     .setDeveloperKey(GOOGLE_API_KEY)
     .setCallback(pickerCallback)
+    .setOrigin(window.location.origin)
     .build();
   picker.setVisible(true);
 }
@@ -111,7 +146,7 @@ async function pickerCallback(data) {
       const formName = document.querySelector('.header h1')?.textContent?.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-') || 'Discovery';
       const fileName = `${clientName}_${formName}_${date}.xlsx`;
 
-      // Upload to Google Drive
+      // Upload to Google Drive using multipart upload
       const metadata = {
         name: fileName,
         mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -134,10 +169,9 @@ async function pickerCallback(data) {
         btn.innerHTML = '<span class="drive-icon">✅</span> Saved!';
         showToast(`Saved "${fileName}" to "${folderName}" in Google Drive!`, 'success');
 
-        // Show link to file
         if (result.webViewLink) {
           setTimeout(() => {
-            const openFile = confirm(`File saved successfully!\n\nWould you like to open it in Google Drive?`);
+            const openFile = confirm('File saved successfully!\n\nWould you like to open it in Google Drive?');
             if (openFile) {
               window.open(result.webViewLink, '_blank');
             }
@@ -147,7 +181,7 @@ async function pickerCallback(data) {
         throw new Error(result.error?.message || 'Upload failed');
       }
     } catch (err) {
-      console.error('Drive upload error:', err);
+      console.error('[Drive] Upload error:', err);
       showToast('Upload failed: ' + err.message, 'error');
     }
 
@@ -158,7 +192,7 @@ async function pickerCallback(data) {
   }
 }
 
-// Generate workbook from form data (called by each form)
+// Generate workbook from form data
 function generateWorkbook() {
   const data = [];
   const sections = document.querySelectorAll('.section, .meta-section');
@@ -188,6 +222,7 @@ function generateWorkbook() {
 // Enhanced toast notification
 function showToast(message, type) {
   const t = document.getElementById('toast');
+  if (!t) return;
   t.textContent = message;
   t.style.background = type === 'error' ? '#ef4444' : '#10b981';
   t.style.display = 'block';
