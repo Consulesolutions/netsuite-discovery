@@ -1,18 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NetSuite Discovery: Project Management & Job Costing</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NetSuite ERP Discovery — Project Management & Job Costing</title>
+  <script src="drive-upload.js"></script>
+  <script src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
+  <script src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.min.js"></script>
+  <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #f0f2f5; color: #1a1a2e; line-height: 1.6; }
 .header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); color: white; padding: 40px 20px; text-align: center; }
 .header h1 { font-size: 28px; margin-bottom: 8px; }
 .header p { opacity: 0.85; font-size: 15px; max-width: 600px; margin: 0 auto; }
-.header .back-link { display: inline-block; margin-top: 12px; color: #fff; text-decoration: none; font-size: 14px; opacity: 0.8; }
-.header .back-link:hover { opacity: 1; }
 .container { max-width: 900px; margin: 30px auto; padding: 0 20px 60px; }
 .meta-section { background: white; border-radius: 12px; padding: 30px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
 .meta-section h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #0f3460; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #e8ecf1; }
@@ -34,7 +35,7 @@ body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background
 .radio-group label:has(input:checked), .checkbox-group label:has(input:checked) { border-color: #0f3460; background: #eef2ff; }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 @media (max-width: 600px) { .grid-2 { grid-template-columns: 1fr; } }
-.btn-bar { position: sticky; bottom: 0; background: white; padding: 16px 20px; border-top: 1px solid #e5e7eb; display: flex; justify-content: center; gap: 12px; z-index: 10; flex-wrap: wrap; }
+.btn-bar { position: sticky; bottom: 0; background: white; padding: 16px 20px; border-top: 1px solid #e5e7eb; display: flex; justify-content: center; gap: 12px; z-index: 10; }
 .btn { padding: 12px 32px; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
 .btn-primary { background: #0f3460; color: white; }
 .btn-primary:hover { background: #1a4a7a; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(15,52,96,0.3); }
@@ -49,723 +50,767 @@ body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background
 .progress-fill { height: 100%; background: linear-gradient(90deg, #0f3460, #4a90d9); border-radius: 3px; transition: width 0.5s ease; }
 .progress-text { text-align: center; font-size: 13px; color: #666; margin-bottom: 10px; }
 .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: #10b981; color: white; padding: 12px 24px; border-radius: 8px; font-weight: 600; z-index: 100; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
-</style>
-<script src="drive-upload.js"></script>
-<script src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
-<script src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
+  </style>
 </head>
 <body>
+  <div class="header">
+    <a href="index.html" style="color:rgba(255,255,255,0.7);text-decoration:none;font-size:13px;display:inline-block;margin-bottom:10px;">&larr; Back to all forms</a>
+    <h1>Project Management & Job Costing</h1>
+    <p>NetSuite ERP Discovery Questionnaire — Complete all sections during the discovery session with the client</p>
+  </div>
 
-<div class="header">
-  <a href="index.html" class="back-link">← Back to Index</a>
-  <h1>NetSuite Discovery: Project Management & Job Costing</h1>
-  <p>Comprehensive assessment of project management capabilities, job costing methodologies, and resource allocation strategies</p>
-</div>
+  <div class="container">
+    <div class="progress-text">Completion: <span id="progressPct">0%</span></div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
 
-<div class="container">
-  <form id="discoveryForm">
-
-    <!-- Session Information Meta-Section -->
     <div class="meta-section">
       <h2>Session Information</h2>
       <div class="grid-2">
-        <div class="field">
-          <label for="company_name" class="required">Organization Name</label>
-          <input type="text" id="company_name" name="company_name" data-export="Company Name" placeholder="Enter organization name">
-        </div>
-        <div class="field">
-          <label for="session_date" class="required">Session Date</label>
-          <input type="date" id="session_date" name="session_date" data-export="Session Date">
-        </div>
-        <div class="field">
-          <label for="facilitator_name" class="required">Facilitator Name</label>
-          <input type="text" id="facilitator_name" name="facilitator_name" data-export="Facilitator Name" placeholder="Name">
-        </div>
-        <div class="field">
-          <label for="participant_names">Key Participants</label>
-          <input type="text" id="participant_names" name="participant_names" data-export="Key Participants" placeholder="Names and titles">
-        </div>
+        <div class="field"><label class="required">Client / Company Name</label><input type="text" data-export="Client Name"></div>
+        <div class="field"><label class="required">Completed By</label><input type="text" data-export="Completed By"></div>
+        <div class="field"><label>Date</label><input type="date" data-export="Date"></div>
+        <div class="field"><label>Session Attendees</label><input type="text" data-export="Attendees" placeholder="Names and roles"></div>
       </div>
-    </div>
-
-    <!-- Progress Bar -->
-    <div class="progress-text" id="progressText">Progress: 0%</div>
-    <div class="progress-bar">
-      <div class="progress-fill" id="progressFill"></div>
     </div>
 
     <!-- Section 1: Project Structure & Types -->
     <div class="section">
-      <h2>1. Project Structure & Types</h2>
-      <div class="section-desc">Understand project organization, types, and hierarchy management</div>
+      <h2>Section 1: Project Structure & Types</h2>
+      <p class="section-desc">Understand the organization's project types, hierarchy, and current portfolio</p>
 
       <div class="field">
-        <label for="project_types" class="required">What project types does your organization manage?</label>
+        <label class="required">What project types does your organization manage?</label>
         <div class="checkbox-group">
-          <label><input type="checkbox" name="project_types" value="fixed_price" data-export="Project Types - Fixed Price"> <span>Fixed Price</span></label>
-          <label><input type="checkbox" name="project_types" value="time_materials" data-export="Project Types - Time & Materials"> <span>Time & Materials (T&M)</span></label>
-          <label><input type="checkbox" name="project_types" value="cost_plus" data-export="Project Types - Cost Plus"> <span>Cost Plus</span></label>
-          <label><input type="checkbox" name="project_types" value="internal" data-export="Project Types - Internal"> <span>Internal Projects</span></label>
-          <label><input type="checkbox" name="project_types" value="capex" data-export="Project Types - CapEx"> <span>CapEx Projects</span></label>
+          <label><input type="checkbox" name="s1_projTypes" value="Fixed Price" data-export="Project Types: Fixed Price"><span>Fixed Price</span></label>
+          <label><input type="checkbox" name="s1_projTypes" value="Time & Materials" data-export="Project Types: T&M"><span>Time & Materials (T&M)</span></label>
+          <label><input type="checkbox" name="s1_projTypes" value="Cost Plus" data-export="Project Types: Cost Plus"><span>Cost Plus</span></label>
+          <label><input type="checkbox" name="s1_projTypes" value="Internal/CapEx" data-export="Project Types: Internal/CapEx"><span>Internal/CapEx</span></label>
+          <label><input type="checkbox" name="s1_projTypes" value="Government Contract" data-export="Project Types: Govt"><span>Government Contract (FAR/DFARS)</span></label>
         </div>
       </div>
 
       <div class="field">
-        <label for="project_hierarchy">Describe your project hierarchy and structure</label>
-        <div class="hint">e.g., Master Project > Subprojects > Tasks, or Portfolio > Program > Project</div>
-        <textarea id="project_hierarchy" name="project_hierarchy" data-export="Project Hierarchy & Structure" placeholder="Describe organizational structure..."></textarea>
+        <label class="required">Primary industry / vertical</label>
+        <select data-export="Primary Industry">
+          <option value="">— Select —</option>
+          <option value="Construction">Construction</option>
+          <option value="Professional Services">Professional Services</option>
+          <option value="Government Contracting">Government Contracting</option>
+          <option value="Engineering">Engineering</option>
+          <option value="IT/Software">IT/Software Development</option>
+          <option value="Healthcare">Healthcare Services</option>
+          <option value="Other">Other (please specify)</option>
+        </select>
       </div>
 
       <div class="field">
-        <label for="project_templates">Do you use project templates?</label>
+        <label>If "Other" — please specify</label>
+        <input type="text" data-export="Industry - Other" placeholder="e.g., Manufacturing, Consulting">
+      </div>
+
+      <div class="field">
+        <label class="required">Current active projects</label>
+        <input type="number" data-export="Active Project Count" placeholder="e.g., 25" min="0">
+      </div>
+
+      <div class="field">
+        <label class="required">Do you use a project hierarchy / WBS (Work Breakdown Structure)?</label>
         <div class="radio-group">
-          <label><input type="radio" name="project_templates" value="yes" data-export="Uses Project Templates"> <span>Yes</span></label>
-          <label><input type="radio" name="project_templates" value="no"> <span>No</span></label>
-          <label><input type="radio" name="project_templates" value="partial"> <span>Partially</span></label>
+          <label><input type="radio" name="s1_wbs" value="Yes - Formal WBS" data-export="WBS Used"><span>Yes - Formal WBS</span></label>
+          <label><input type="radio" name="s1_wbs" value="Yes - Informal" data-export="WBS Used"><span>Yes - Informal structure</span></label>
+          <label><input type="radio" name="s1_wbs" value="No" data-export="WBS Used"><span>No</span></label>
         </div>
       </div>
 
       <div class="field">
-        <label for="naming_conventions">What naming conventions do you use for projects?</label>
-        <div class="hint">e.g., [YYYY]-[Client]-[Type]-[Number], or [Department]-[Project]-[Phase]</div>
-        <input type="text" id="naming_conventions" name="naming_conventions" data-export="Project Naming Conventions" placeholder="Enter naming convention pattern...">
+        <label>Project naming conventions / standards</label>
+        <input type="text" data-export="Project Naming Convention" placeholder="e.g., [YY]-[Client Abbr]-[Description], or freeform">
       </div>
 
       <div class="field">
-        <label for="project_phases">How many typical project phases do you manage?</label>
-        <input type="number" id="project_phases" name="project_phases" data-export="Number of Project Phases" placeholder="e.g., 5" min="1" max="20">
-      </div>
-
-      <div class="field">
-        <label for="project_portfolio">How many active projects do you manage concurrently?</label>
-        <input type="number" id="project_portfolio" name="project_portfolio" data-export="Concurrent Active Projects" placeholder="e.g., 25" min="0">
+        <label>Typical project duration</label>
+        <input type="text" data-export="Typical Project Duration" placeholder="e.g., 3–6 months, ongoing, 1–2 years">
       </div>
     </div>
 
-    <!-- Section 2: Project Budgeting -->
+    <!-- Section 2: Project Budgeting & Cost Control -->
     <div class="section">
-      <h2>2. Project Budgeting</h2>
-      <div class="section-desc">Assess budget creation, management, and revision processes</div>
+      <h2>Section 2: Project Budgeting & Cost Control</h2>
+      <p class="section-desc">Capture budgeting methodologies, approval workflows, and financial metrics</p>
 
       <div class="field">
-        <label for="budget_methods" class="required">What budget methods do you use?</label>
+        <label class="required">Budgeting method(s)</label>
         <div class="checkbox-group">
-          <label><input type="checkbox" name="budget_methods" value="lumpsum" data-export="Budget Method - Lump Sum"> <span>Lump Sum</span></label>
-          <label><input type="checkbox" name="budget_methods" value="detailed" data-export="Budget Method - Detailed Line Item"> <span>Detailed Line Item</span></label>
-          <label><input type="checkbox" name="budget_methods" value="phased" data-export="Budget Method - Phased"> <span>Phased</span></label>
-          <label><input type="checkbox" name="budget_methods" value="contingency" data-export="Budget Method - Contingency"> <span>Contingency-Based</span></label>
-          <label><input type="checkbox" name="budget_methods" value="rolling" data-export="Budget Method - Rolling"> <span>Rolling Wave</span></label>
+          <label><input type="checkbox" name="s2_budgetMethods" value="Lump Sum" data-export="Budget Methods: Lump Sum"><span>Lump Sum</span></label>
+          <label><input type="checkbox" name="s2_budgetMethods" value="Detailed Line Items" data-export="Budget Methods: Detailed"><span>Detailed Line Items</span></label>
+          <label><input type="checkbox" name="s2_budgetMethods" value="Phased Budget" data-export="Budget Methods: Phased"><span>Phased Budget</span></label>
+          <label><input type="checkbox" name="s2_budgetMethods" value="Contingency" data-export="Budget Methods: Contingency"><span>Contingency Reserve</span></label>
         </div>
       </div>
 
       <div class="field">
-        <label for="budget_by_category">Do you budget by cost category?</label>
+        <label class="required">What currencies does your business operate in?</label>
+        <div class="checkbox-group">
+          <label><input type="checkbox" name="s2_currency" value="USD" data-export="Currency: USD"><span>USD</span></label>
+          <label><input type="checkbox" name="s2_currency" value="CAD" data-export="Currency: CAD"><span>CAD</span></label>
+          <label><input type="checkbox" name="s2_currency" value="Multi-currency" data-export="Currency: Multi"><span>Multi-currency</span></label>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="required">Budget approval workflow</label>
         <div class="radio-group">
-          <label><input type="radio" name="budget_by_category" value="yes" data-export="Budgets by Cost Category"> <span>Yes</span></label>
-          <label><input type="radio" name="budget_by_category" value="no"> <span>No</span></label>
+          <label><input type="radio" name="s2_approvalWf" value="Automatic (no approval)" data-export="Budget Approval"><span>Automatic (no approval)</span></label>
+          <label><input type="radio" name="s2_approvalWf" value="Project Manager only" data-export="Budget Approval"><span>Project Manager only</span></label>
+          <label><input type="radio" name="s2_approvalWf" value="Manager + Finance" data-export="Budget Approval"><span>Manager + Finance Director</span></label>
+          <label><input type="radio" name="s2_approvalWf" value="Multi-level approval" data-export="Budget Approval"><span>Multi-level (3+ approvers)</span></label>
         </div>
       </div>
 
       <div class="field">
-        <label for="revenue_budget">Do you create separate revenue budgets?</label>
+        <label class="required">How often are budgets revised / updated?</label>
         <div class="radio-group">
-          <label><input type="radio" name="revenue_budget" value="yes" data-export="Separate Revenue Budgets"> <span>Yes</span></label>
-          <label><input type="radio" name="revenue_budget" value="no"> <span>No</span></label>
-          <label><input type="radio" name="revenue_budget" value="partial"> <span>For Some Projects</span></label>
+          <label><input type="radio" name="s2_revisionFreq" value="One-time at project start" data-export="Budget Revision Frequency"><span>One-time at project start</span></label>
+          <label><input type="radio" name="s2_revisionFreq" value="Quarterly" data-export="Budget Revision Frequency"><span>Quarterly</span></label>
+          <label><input type="radio" name="s2_revisionFreq" value="Monthly" data-export="Budget Revision Frequency"><span>Monthly</span></label>
+          <label><input type="radio" name="s2_revisionFreq" value="As-needed" data-export="Budget Revision Frequency"><span>As-needed / Ad-hoc</span></label>
         </div>
       </div>
 
       <div class="field">
-        <label for="budget_revision_frequency">How often do you revise budgets?</label>
+        <label class="required">Do you track Earned Value Management (CPI, SPI, EAC, ETC)?</label>
         <div class="radio-group">
-          <label><input type="radio" name="budget_revision_frequency" value="monthly" data-export="Budget Revision Frequency"> <span>Monthly</span></label>
-          <label><input type="radio" name="budget_revision_frequency" value="quarterly"> <span>Quarterly</span></label>
-          <label><input type="radio" name="budget_revision_frequency" value="asneeded"> <span>As Needed</span></label>
-          <label><input type="radio" name="budget_revision_frequency" value="never"> <span>Never</span></label>
+          <label><input type="radio" name="s2_evm" value="Yes - All metrics" data-export="Earned Value Management"><span>Yes - All metrics</span></label>
+          <label><input type="radio" name="s2_evm" value="Yes - Selected metrics" data-export="Earned Value Management"><span>Yes - Selected metrics</span></label>
+          <label><input type="radio" name="s2_evm" value="No" data-export="Earned Value Management"><span>No</span></label>
         </div>
       </div>
 
       <div class="field">
-        <label for="approval_workflow">Describe your budget approval workflow</label>
-        <div class="hint">Include # of approval levels, roles involved, and typical turnaround time</div>
-        <textarea id="approval_workflow" name="approval_workflow" data-export="Budget Approval Workflow" placeholder="Describe approval process..."></textarea>
+        <label>If tracking EVM, which metrics are most important?</label>
+        <input type="text" data-export="EVM Metrics" placeholder="e.g., CPI, SPI, EAC, or other custom metrics">
       </div>
 
       <div class="field">
-        <label for="budget_constraints">What budget constraints are critical to your business?</label>
-        <input type="text" id="budget_constraints" name="budget_constraints" data-export="Critical Budget Constraints" placeholder="e.g., margin targets, client budgets, cost controls...">
+        <label>Typical budget variance threshold for alerts</label>
+        <input type="text" data-export="Budget Variance Threshold" placeholder="e.g., 10%, 15%, >$50K, or N/A">
       </div>
     </div>
 
     <!-- Section 3: Resource Management -->
     <div class="section">
-      <h2>3. Resource Management</h2>
-      <div class="section-desc">Evaluate resource types, allocation, and capacity planning</div>
+      <h2>Section 3: Resource Management</h2>
+      <p class="section-desc">Capture resource types, labor rates, and capacity planning needs</p>
 
       <div class="field">
-        <label for="resource_types" class="required">What resource types do you track?</label>
+        <label class="required">Types of resources engaged on projects</label>
         <div class="checkbox-group">
-          <label><input type="checkbox" name="resource_types" value="labor" data-export="Resource Type - Labor"> <span>Labor</span></label>
-          <label><input type="checkbox" name="resource_types" value="materials" data-export="Resource Type - Materials"> <span>Materials</span></label>
-          <label><input type="checkbox" name="resource_types" value="equipment" data-export="Resource Type - Equipment"> <span>Equipment</span></label>
-          <label><input type="checkbox" name="resource_types" value="subcontractors" data-export="Resource Type - Subcontractors"> <span>Subcontractors</span></label>
-          <label><input type="checkbox" name="resource_types" value="other" data-export="Resource Type - Other"> <span>Other</span></label>
+          <label><input type="checkbox" name="s3_resourceTypes" value="Full-time Employees" data-export="Resource Types: FTE"><span>Full-time Employees</span></label>
+          <label><input type="checkbox" name="s3_resourceTypes" value="1099 Contractors" data-export="Resource Types: 1099"><span>1099 Contractors (US)</span></label>
+          <label><input type="checkbox" name="s3_resourceTypes" value="Subcontractors" data-export="Resource Types: Subcontractors"><span>Subcontractors</span></label>
+          <label><input type="checkbox" name="s3_resourceTypes" value="Equipment/Machinery" data-export="Resource Types: Equipment"><span>Equipment/Machinery</span></label>
+          <label><input type="checkbox" name="s3_resourceTypes" value="Vendors" data-export="Resource Types: Vendors"><span>Vendors/Partners</span></label>
         </div>
       </div>
 
       <div class="field">
-        <label for="resource_rates">How do you manage resource rates?</label>
+        <label class="required">Labor rate structure</label>
         <div class="radio-group">
-          <label><input type="radio" name="resource_rates" value="standard" data-export="Resource Rate Management"> <span>Standard Rates</span></label>
-          <label><input type="radio" name="resource_rates" value="byproject"> <span>Project-Specific</span></label>
-          <label><input type="radio" name="resource_rates" value="tiered"> <span>Tiered by Role</span></label>
-          <label><input type="radio" name="resource_rates" value="manual"> <span>Manual Entry</span></label>
+          <label><input type="radio" name="s3_rateStruct" value="Standard company rates" data-export="Labor Rate Structure"><span>Standard company rates</span></label>
+          <label><input type="radio" name="s3_rateStruct" value="Project-specific rates" data-export="Labor Rate Structure"><span>Project-specific rates</span></label>
+          <label><input type="radio" name="s3_rateStruct" value="Prevailing wage (Davis-Bacon)" data-export="Labor Rate Structure"><span>Prevailing wage (Davis-Bacon / PWA)</span></label>
+          <label><input type="radio" name="s3_rateStruct" value="Mixed approach" data-export="Labor Rate Structure"><span>Mixed approach</span></label>
         </div>
       </div>
 
       <div class="field">
-        <label for="allocation_method">How do you allocate resources to projects?</label>
-        <div class="hint">e.g., full-time, part-time, by %, percentage allocation</div>
-        <input type="text" id="allocation_method" name="allocation_method" data-export="Resource Allocation Method" placeholder="Describe allocation approach...">
+        <label>Do you have prevailing wage projects? If so, which states/provinces?</label>
+        <input type="text" data-export="Prevailing Wage States" placeholder="e.g., CA, NY, TX, ON, BC, AB">
       </div>
 
       <div class="field">
-        <label for="capacity_planning">Do you use capacity planning tools?</label>
+        <label class="required">Do you manage resource capacity planning / utilization?</label>
         <div class="radio-group">
-          <label><input type="radio" name="capacity_planning" value="yes" data-export="Uses Capacity Planning"> <span>Yes</span></label>
-          <label><input type="radio" name="capacity_planning" value="no"> <span>No</span></label>
-          <label><input type="radio" name="capacity_planning" value="manual"> <span>Manual Tracking</span></label>
+          <label><input type="radio" name="s3_capacity" value="Yes - Dedicated resource manager" data-export="Capacity Planning"><span>Yes - Dedicated resource manager</span></label>
+          <label><input type="radio" name="s3_capacity" value="Yes - Ad-hoc" data-export="Capacity Planning"><span>Yes - Ad-hoc / Informal</span></label>
+          <label><input type="radio" name="s3_capacity" value="No" data-export="Capacity Planning"><span>No</span></label>
         </div>
       </div>
 
       <div class="field">
-        <label for="resource_leveling">Do you perform resource leveling?</label>
+        <label class="required">Geographic distribution of workforce</label>
+        <div class="checkbox-group">
+          <label><input type="checkbox" name="s3_geography" value="Single location" data-export="Workforce Geography: Single"><span>Single location</span></label>
+          <label><input type="checkbox" name="s3_geography" value="Multiple US states" data-export="Workforce Geography: Multi-US"><span>Multiple US states</span></label>
+          <label><input type="checkbox" name="s3_geography" value="Canada (single province)" data-export="Workforce Geography: CA-Single"><span>Canada (single province)</span></label>
+          <label><input type="checkbox" name="s3_geography" value="Canada (multi-province)" data-export="Workforce Geography: CA-Multi"><span>Canada (multi-province)</span></label>
+          <label><input type="checkbox" name="s3_geography" value="Cross-border US/Canada" data-export="Workforce Geography: Cross-Border"><span>Cross-border US/Canada</span></label>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Canadian bilingual resources required?</label>
         <div class="radio-group">
-          <label><input type="radio" name="resource_leveling" value="yes" data-export="Performs Resource Leveling"> <span>Yes</span></label>
-          <label><input type="radio" name="resource_leveling" value="no"> <span>No</span></label>
+          <label><input type="radio" name="s3_bilingual" value="Yes - English/French" data-export="Bilingual Required"><span>Yes - English/French</span></label>
+          <label><input type="radio" name="s3_bilingual" value="No" data-export="Bilingual Required"><span>No</span></label>
         </div>
       </div>
 
       <div class="field">
-        <label for="resource_challenges">What are your biggest resource management challenges?</label>
-        <textarea id="resource_challenges" name="resource_challenges" data-export="Resource Management Challenges" placeholder="Describe challenges and pain points..."></textarea>
+        <label>Typical resource allocation method</label>
+        <input type="text" data-export="Resource Allocation" placeholder="e.g., 100% dedicated, shared across projects, hybrid">
       </div>
     </div>
 
     <!-- Section 4: Time & Expense Tracking -->
     <div class="section">
-      <h2>4. Time & Expense Tracking</h2>
-      <div class="section-desc">Understand time entry, approvals, and expense management processes</div>
+      <h2>Section 4: Time & Expense Tracking</h2>
+      <p class="section-desc">Understand timesheet submissions, billable classification, and compliance requirements</p>
 
       <div class="field">
-        <label for="timesheet_frequency" class="required">What is your timesheet entry frequency?</label>
+        <label class="required">Timesheet submission frequency</label>
         <div class="radio-group">
-          <label><input type="radio" name="timesheet_frequency" value="daily" data-export="Timesheet Frequency"> <span>Daily</span></label>
-          <label><input type="radio" name="timesheet_frequency" value="weekly"> <span>Weekly</span></label>
-          <label><input type="radio" name="timesheet_frequency" value="biweekly"> <span>Bi-weekly</span></label>
-          <label><input type="radio" name="timesheet_frequency" value="monthly"> <span>Monthly</span></label>
+          <label><input type="radio" name="s4_tsFreq" value="Weekly" data-export="Timesheet Frequency"><span>Weekly</span></label>
+          <label><input type="radio" name="s4_tsFreq" value="Bi-weekly" data-export="Timesheet Frequency"><span>Bi-weekly</span></label>
+          <label><input type="radio" name="s4_tsFreq" value="Monthly" data-export="Timesheet Frequency"><span>Monthly</span></label>
+          <label><input type="radio" name="s4_tsFreq" value="Daily" data-export="Timesheet Frequency"><span>Daily</span></label>
         </div>
       </div>
 
       <div class="field">
-        <label for="timesheet_approvals">Describe your timesheet approval workflow</label>
-        <div class="hint">Include approval levels, timelines, and manager roles</div>
-        <textarea id="timesheet_approvals" name="timesheet_approvals" data-export="Timesheet Approval Workflow" placeholder="Describe approval process..."></textarea>
-      </div>
-
-      <div class="field">
-        <label for="expense_reporting">Do you track expense reports?</label>
+        <label class="required">Do you require billable vs. non-billable classification?</label>
         <div class="radio-group">
-          <label><input type="radio" name="expense_reporting" value="yes" data-export="Tracks Expense Reports"> <span>Yes</span></label>
-          <label><input type="radio" name="expense_reporting" value="no"> <span>No</span></label>
+          <label><input type="radio" name="s4_billable" value="Yes - Per timesheet entry" data-export="Billable Classification"><span>Yes - Per timesheet entry</span></label>
+          <label><input type="radio" name="s4_billable" value="Yes - Per project" data-export="Billable Classification"><span>Yes - Per project / resource</span></label>
+          <label><input type="radio" name="s4_billable" value="No - All billable" data-export="Billable Classification"><span>No - All time is billable</span></label>
         </div>
       </div>
 
       <div class="field">
-        <label for="billable_nonbillable">How do you distinguish billable vs non-billable time?</label>
-        <div class="hint">e.g., project codes, flags, cost categories</div>
-        <input type="text" id="billable_nonbillable" name="billable_nonbillable" data-export="Billable vs Non-billable Tracking" placeholder="Describe tracking method...">
-      </div>
-
-      <div class="field">
-        <label for="overtime_rules">Describe your overtime handling and rules</label>
-        <div class="hint">e.g., multiplier rates, project impact, approval required</div>
-        <textarea id="overtime_rules" name="overtime_rules" data-export="Overtime Rules & Handling" placeholder="Describe overtime approach..."></textarea>
-      </div>
-
-      <div class="field">
-        <label for="time_entry_method">What methods do employees use to enter time?</label>
+        <label class="required">Overtime compliance</label>
         <div class="checkbox-group">
-          <label><input type="checkbox" name="time_entry_method" value="mobile" data-export="Time Entry - Mobile App"> <span>Mobile App</span></label>
-          <label><input type="checkbox" name="time_entry_method" value="web" data-export="Time Entry - Web"> <span>Web Portal</span></label>
-          <label><input type="checkbox" name="time_entry_method" value="excel" data-export="Time Entry - Excel"> <span>Excel/CSV</span></label>
-          <label><input type="checkbox" name="time_entry_method" value="paper" data-export="Time Entry - Paper"> <span>Paper Forms</span></label>
+          <label><input type="checkbox" name="s4_overtime" value="FLSA (US)" data-export="Overtime: FLSA"><span>FLSA (US)</span></label>
+          <label><input type="checkbox" name="s4_overtime" value="Provincial labor standards (Canada)" data-export="Overtime: CA Prov"><span>Provincial labor standards (Canada)</span></label>
+          <label><input type="checkbox" name="s4_overtime" value="Prevailing wage rules" data-export="Overtime: Prevailing"><span>Prevailing wage rules</span></label>
+          <label><input type="checkbox" name="s4_overtime" value="No special rules" data-export="Overtime: None"><span>No special overtime rules</span></label>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="required">Per diem and expense reimbursement policy</label>
+        <div class="radio-group">
+          <label><input type="radio" name="s4_perdiem" value="GSA rates (US)" data-export="Per Diem"><span>GSA rates (US)</span></label>
+          <label><input type="radio" name="s4_perdiem" value="Treasury Board rates (Canada)" data-export="Per Diem"><span>Treasury Board rates (Canada)</span></label>
+          <label><input type="radio" name="s4_perdiem" value="Custom company rates" data-export="Per Diem"><span>Custom company rates</span></label>
+          <label><input type="radio" name="s4_perdiem" value="Actual expenses, no per diem" data-export="Per Diem"><span>Actual expenses, no per diem</span></label>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="required">Mileage tracking</label>
+        <div class="radio-group">
+          <label><input type="radio" name="s4_mileage" value="IRS standard rate (US)" data-export="Mileage"><span>IRS standard rate (US)</span></label>
+          <label><input type="radio" name="s4_mileage" value="CRA rate (Canada)" data-export="Mileage"><span>CRA rate (Canada)</span></label>
+          <label><input type="radio" name="s4_mileage" value="Custom rate" data-export="Mileage"><span>Custom rate</span></label>
+          <label><input type="radio" name="s4_mileage" value="No mileage tracking" data-export="Mileage"><span>No mileage tracking</span></label>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Which expense types are tracked?</label>
+        <input type="text" data-export="Expense Types" placeholder="e.g., Travel, Meals, Equipment, Supplies, Subcontractor fees">
+      </div>
+
+      <div class="field">
+        <label>Mobile timesheet app / solution required?</label>
+        <div class="radio-group">
+          <label><input type="radio" name="s4_mobileApp" value="Yes" data-export="Mobile Timesheet App"><span>Yes</span></label>
+          <label><input type="radio" name="s4_mobileApp" value="No - Desktop only" data-export="Mobile Timesheet App"><span>No - Desktop only</span></label>
         </div>
       </div>
     </div>
 
     <!-- Section 5: Job Costing Setup -->
     <div class="section">
-      <h2>5. Job Costing Setup</h2>
-      <div class="section-desc">Evaluate cost structure, categories, and allocation methodologies</div>
+      <h2>Section 5: Job Costing Setup</h2>
+      <p class="section-desc">Define cost structure, tracking methods, and allocation rules</p>
 
       <div class="field">
-        <label for="cost_categories" class="required">What cost categories do you use?</label>
+        <label class="required">Primary cost categories tracked</label>
         <div class="checkbox-group">
-          <label><input type="checkbox" name="cost_categories" value="labor" data-export="Cost Category - Labor"> <span>Labor</span></label>
-          <label><input type="checkbox" name="cost_categories" value="materials" data-export="Cost Category - Materials"> <span>Materials</span></label>
-          <label><input type="checkbox" name="cost_categories" value="subcontractor" data-export="Cost Category - Subcontractor"> <span>Subcontractor</span></label>
-          <label><input type="checkbox" name="cost_categories" value="equipment" data-export="Cost Category - Equipment"> <span>Equipment</span></label>
-          <label><input type="checkbox" name="cost_categories" value="overhead" data-export="Cost Category - Overhead"> <span>Overhead</span></label>
-          <label><input type="checkbox" name="cost_categories" value="other" data-export="Cost Category - Other"> <span>Other</span></label>
+          <label><input type="checkbox" name="s5_costCats" value="Labor" data-export="Cost Categories: Labor"><span>Labor</span></label>
+          <label><input type="checkbox" name="s5_costCats" value="Materials" data-export="Cost Categories: Materials"><span>Materials</span></label>
+          <label><input type="checkbox" name="s5_costCats" value="Subcontractor" data-export="Cost Categories: Sub"><span>Subcontractor</span></label>
+          <label><input type="checkbox" name="s5_costCats" value="Equipment/Machinery" data-export="Cost Categories: Equip"><span>Equipment/Machinery</span></label>
+          <label><input type="checkbox" name="s5_costCats" value="Overhead" data-export="Cost Categories: OH"><span>Overhead</span></label>
+          <label><input type="checkbox" name="s5_costCats" value="Other" data-export="Cost Categories: Other"><span>Other</span></label>
         </div>
       </div>
 
       <div class="field">
-        <label for="cost_codes">Do you use a cost code or WBS structure?</label>
+        <label class="required">Cost code / WBS structure complexity</label>
         <div class="radio-group">
-          <label><input type="radio" name="cost_codes" value="yes" data-export="Uses Cost Codes/WBS"> <span>Yes</span></label>
-          <label><input type="radio" name="cost_codes" value="no"> <span>No</span></label>
+          <label><input type="radio" name="s5_codeComplexity" value="Simple (< 50 codes)" data-export="Cost Code Complexity"><span>Simple (< 50 codes)</span></label>
+          <label><input type="radio" name="s5_codeComplexity" value="Medium (50–200)" data-export="Cost Code Complexity"><span>Medium (50–200 codes)</span></label>
+          <label><input type="radio" name="s5_codeComplexity" value="Complex (> 200)" data-export="Cost Code Complexity"><span>Complex (> 200 codes)</span></label>
         </div>
       </div>
 
       <div class="field">
-        <label for="wbs_structure">If yes, describe your cost code/WBS structure</label>
-        <div class="hint">e.g., [Project]-[Phase]-[Task]-[Cost Type]</div>
-        <input type="text" id="wbs_structure" name="wbs_structure" data-export="Cost Code/WBS Structure" placeholder="Enter structure format...">
+        <label>Cost code naming standard</label>
+        <input type="text" data-export="Cost Code Standard" placeholder="e.g., [Phase]-[Category]-[Task], or hierarchical">
       </div>
 
       <div class="field">
-        <label for="burden_allocation">How do you allocate burden/overhead?</label>
+        <label class="required">Overhead allocation method</label>
         <div class="radio-group">
-          <label><input type="radio" name="burden_allocation" value="labor_percent" data-export="Burden Allocation Method"> <span>% of Labor</span></label>
-          <label><input type="radio" name="burden_allocation" value="total_cost"> <span>% of Total Cost</span></label>
-          <label><input type="radio" name="burden_allocation" value="fixed"> <span>Fixed Amount</span></label>
-          <label><input type="radio" name="burden_allocation" value="none"> <span>None</span></label>
+          <label><input type="radio" name="s5_overhead" value="Percentage of labor" data-export="Overhead Allocation"><span>Percentage of labor</span></label>
+          <label><input type="radio" name="s5_overhead" value="Per-employee monthly rate" data-export="Overhead Allocation"><span>Per-employee monthly rate</span></label>
+          <label><input type="radio" name="s5_overhead" value="Burden rate (all-in)" data-export="Overhead Allocation"><span>Burden rate (all-in)</span></label>
+          <label><input type="radio" name="s5_overhead" value="No formal allocation" data-export="Overhead Allocation"><span>No formal allocation</span></label>
         </div>
       </div>
 
       <div class="field">
-        <label for="allocation_methods">What cost allocation methods do you use?</label>
-        <div class="checkbox-group">
-          <label><input type="checkbox" name="allocation_methods" value="direct" data-export="Allocation - Direct"> <span>Direct</span></label>
-          <label><input type="checkbox" name="allocation_methods" value="timedrive" data-export="Allocation - Time-Driven"> <span>Time-Driven</span></label>
-          <label><input type="checkbox" name="allocation_methods" value="activitybased" data-export="Allocation - Activity-Based"> <span>Activity-Based</span></label>
-          <label><input type="checkbox" name="allocation_methods" value="manual" data-export="Allocation - Manual"> <span>Manual</span></label>
+        <label>Typical overhead rate(s)</label>
+        <input type="text" data-export="Overhead Rate" placeholder="e.g., 35%, $2,500/employee/month">
+      </div>
+
+      <div class="field">
+        <label class="required">Do you track direct vs. indirect costs separately?</label>
+        <div class="radio-group">
+          <label><input type="radio" name="s5_directIndirect" value="Yes" data-export="Direct vs Indirect"><span>Yes</span></label>
+          <label><input type="radio" name="s5_directIndirect" value="No" data-export="Direct vs Indirect"><span>No</span></label>
         </div>
       </div>
 
       <div class="field">
-        <label for="costing_challenges">What costing challenges do you face?</label>
-        <textarea id="costing_challenges" name="costing_challenges" data-export="Job Costing Challenges" placeholder="Describe challenges..."></textarea>
+        <label class="required">Do you have unallowable costs (government contracts)?</label>
+        <div class="radio-group">
+          <label><input type="radio" name="s5_unallowable" value="Yes - FAR/DFARS restrictions" data-export="Unallowable Costs"><span>Yes - FAR/DFARS restrictions</span></label>
+          <label><input type="radio" name="s5_unallowable" value="No" data-export="Unallowable Costs"><span>No</span></label>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>If unallowable costs apply, which types are excluded?</label>
+        <input type="text" data-export="Excluded Cost Types" placeholder="e.g., Marketing, lobbying, certain travel, entertainment">
       </div>
     </div>
 
-    <!-- Section 6: Revenue Recognition -->
+    <!-- Section 6: Revenue Recognition (ASC 606 / IFRS 15) -->
     <div class="section">
-      <h2>6. Revenue Recognition</h2>
-      <div class="section-desc">Understand revenue recognition methods and compliance requirements</div>
+      <h2>Section 6: Revenue Recognition (ASC 606 / IFRS 15)</h2>
+      <p class="section-desc">Capture revenue recognition methodology and compliance approach</p>
 
       <div class="field">
-        <label for="revenue_methods" class="required">What revenue recognition methods do you use?</label>
+        <label class="required">Primary revenue recognition method</label>
+        <div class="radio-group">
+          <label><input type="radio" name="s6_revRecMethod" value="Completed contract" data-export="Revenue Rec Method"><span>Completed contract</span></label>
+          <label><input type="radio" name="s6_revRecMethod" value="% of completion" data-export="Revenue Rec Method"><span>% of completion (input/output)</span></label>
+          <label><input type="radio" name="s6_revRecMethod" value="Time & Materials (T&M)" data-export="Revenue Rec Method"><span>Time & Materials (T&M)</span></label>
+          <label><input type="radio" name="s6_revRecMethod" value="Milestone-based" data-export="Revenue Rec Method"><span>Milestone-based</span></label>
+          <label><input type="radio" name="s6_revRecMethod" value="Mixed" data-export="Revenue Rec Method"><span>Mixed (by project type)</span></label>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="required">Accounting standard(s) you follow</label>
         <div class="checkbox-group">
-          <label><input type="checkbox" name="revenue_methods" value="completed_contract" data-export="Revenue Method - Completed Contract"> <span>Completed Contract</span></label>
-          <label><input type="checkbox" name="revenue_methods" value="poc" data-export="Revenue Method - % of Completion"> <span>% of Completion</span></label>
-          <label><input type="checkbox" name="revenue_methods" value="time_materials" data-export="Revenue Method - Time & Materials"> <span>Time & Materials</span></label>
-          <label><input type="checkbox" name="revenue_methods" value="milestone" data-export="Revenue Method - Milestone"> <span>Milestone-Based</span></label>
+          <label><input type="checkbox" name="s6_standard" value="ASC 606 (US GAAP)" data-export="Accounting Standard: ASC"><span>ASC 606 (US GAAP)</span></label>
+          <label><input type="checkbox" name="s6_standard" value="IFRS 15 (IFRS)" data-export="Accounting Standard: IFRS"><span>IFRS 15 (IFRS)</span></label>
+          <label><input type="checkbox" name="s6_standard" value="Other" data-export="Accounting Standard: Other"><span>Other</span></label>
         </div>
       </div>
 
       <div class="field">
-        <label for="poc_basis">If using % of Completion, what is your measurement basis?</label>
+        <label class="required">Do you identify performance obligations at contract / project level?</label>
         <div class="radio-group">
-          <label><input type="radio" name="poc_basis" value="cost" data-export="POC Measurement Basis"> <span>Cost Incurred</span></label>
-          <label><input type="radio" name="poc_basis" value="labor"> <span>Labor Hours</span></label>
-          <label><input type="radio" name="poc_basis" value="schedule"> <span>Schedule Progress</span></label>
-          <label><input type="radio" name="poc_basis" value="units"> <span>Units Delivered</span></label>
-          <label><input type="radio" name="poc_basis" value="manual"> <span>Manual Assessment</span></label>
+          <label><input type="radio" name="s6_perfObligation" value="Yes - Project/contract level" data-export="Performance Obligations"><span>Yes - Project/contract level</span></label>
+          <label><input type="radio" name="s6_perfObligation" value="Yes - Line item level" data-export="Performance Obligations"><span>Yes - Line item level</span></label>
+          <label><input type="radio" name="s6_perfObligation" value="No - Single obligation" data-export="Performance Obligations"><span>No - Single obligation per contract</span></label>
         </div>
       </div>
 
       <div class="field">
-        <label for="milestone_billing">Do you use milestone-based billing?</label>
+        <label class="required">How do you handle variable consideration (discounts, penalties, bonuses)?</label>
         <div class="radio-group">
-          <label><input type="radio" name="milestone_billing" value="yes" data-export="Uses Milestone Billing"> <span>Yes</span></label>
-          <label><input type="radio" name="milestone_billing" value="no"> <span>No</span></label>
+          <label><input type="radio" name="s6_variable" value="Conservative (most likely amount)" data-export="Variable Consideration"><span>Conservative (most likely amount)</span></label>
+          <label><input type="radio" name="s6_variable" value="Expected value approach" data-export="Variable Consideration"><span>Expected value approach</span></label>
+          <label><input type="radio" name="s6_variable" value="Recognized only when known" data-export="Variable Consideration"><span>Recognized only when known</span></label>
         </div>
       </div>
 
       <div class="field">
-        <label for="asc606_compliance">Are you required to comply with ASC 606?</label>
+        <label class="required">Contract modification handling</label>
         <div class="radio-group">
-          <label><input type="radio" name="asc606_compliance" value="yes" data-export="ASC 606 Compliance Required"> <span>Yes</span></label>
-          <label><input type="radio" name="asc606_compliance" value="no"> <span>No</span></label>
-          <label><input type="radio" name="asc606_compliance" value="partial"> <span>Some Projects</span></label>
+          <label><input type="radio" name="s6_modification" value="New contract" data-export="Contract Modifications"><span>New contract</span></label>
+          <label><input type="radio" name="s6_modification" value="Modify existing contract" data-export="Contract Modifications"><span>Modify existing contract</span></label>
+          <label><input type="radio" name="s6_modification" value="Case-by-case" data-export="Contract Modifications"><span>Case-by-case assessment</span></label>
         </div>
       </div>
 
       <div class="field">
-        <label for="recognition_timing">How often do you calculate revenue recognition?</label>
+        <label>Do you need detailed ASC 606 / IFRS 15 compliance reporting?</label>
         <div class="radio-group">
-          <label><input type="radio" name="recognition_timing" value="monthly" data-export="Revenue Recognition Frequency"> <span>Monthly</span></label>
-          <label><input type="radio" name="recognition_timing" value="quarterly"> <span>Quarterly</span></label>
-          <label><input type="radio" name="recognition_timing" value="asneeded"> <span>As Needed</span></label>
+          <label><input type="radio" name="s6_reporting" value="Yes - Monthly" data-export="ASC 606 Reporting"><span>Yes - Monthly</span></label>
+          <label><input type="radio" name="s6_reporting" value="Yes - Quarterly" data-export="ASC 606 Reporting"><span>Yes - Quarterly</span></label>
+          <label><input type="radio" name="s6_reporting" value="Yes - Annual" data-export="ASC 606 Reporting"><span>Yes - Annual only</span></label>
+          <label><input type="radio" name="s6_reporting" value="No" data-export="ASC 606 Reporting"><span>No</span></label>
         </div>
-      </div>
-
-      <div class="field">
-        <label for="revenue_recognition_issues">Describe revenue recognition challenges or concerns</label>
-        <textarea id="revenue_recognition_issues" name="revenue_recognition_issues" data-export="Revenue Recognition Challenges" placeholder="Describe issues..."></textarea>
       </div>
     </div>
 
     <!-- Section 7: Billing & Invoicing -->
     <div class="section">
-      <h2>7. Billing & Invoicing</h2>
-      <div class="section-desc">Evaluate billing processes, schedules, and invoice management</div>
+      <h2>Section 7: Billing & Invoicing</h2>
+      <p class="section-desc">Understand billing schedules, formats, and regulatory considerations</p>
 
       <div class="field">
-        <label for="billing_schedules" class="required">What billing schedules do you use?</label>
+        <label class="required">Billing schedule types</label>
         <div class="checkbox-group">
-          <label><input type="checkbox" name="billing_schedules" value="monthly" data-export="Billing Schedule - Monthly"> <span>Monthly</span></label>
-          <label><input type="checkbox" name="billing_schedules" value="progress" data-export="Billing Schedule - Progress"> <span>Progress Billing</span></label>
-          <label><input type="checkbox" name="billing_schedules" value="milestone" data-export="Billing Schedule - Milestone"> <span>Milestone-Based</span></label>
-          <label><input type="checkbox" name="billing_schedules" value="fixeddate" data-export="Billing Schedule - Fixed Date"> <span>Fixed Date</span></label>
-          <label><input type="checkbox" name="billing_schedules" value="ondemand" data-export="Billing Schedule - On Demand"> <span>On Demand</span></label>
+          <label><input type="checkbox" name="s7_billSched" value="Progress billing" data-export="Billing: Progress"><span>Progress billing</span></label>
+          <label><input type="checkbox" name="s7_billSched" value="Milestone-based" data-export="Billing: Milestone"><span>Milestone-based</span></label>
+          <label><input type="checkbox" name="s7_billSched" value="Fixed date (monthly)" data-export="Billing: Fixed Date"><span>Fixed date (monthly)</span></label>
+          <label><input type="checkbox" name="s7_billSched" value="Time & Materials" data-export="Billing: T&M"><span>Time & Materials (T&M)</span></label>
+          <label><input type="checkbox" name="s7_billSched" value="Upon completion" data-export="Billing: Completion"><span>Upon completion</span></label>
         </div>
       </div>
 
       <div class="field">
-        <label for="progress_billing">Do you use progress billing?</label>
+        <label class="required">Do you use AIA G702 / G703 (construction progress billing)?</label>
         <div class="radio-group">
-          <label><input type="radio" name="progress_billing" value="yes" data-export="Uses Progress Billing"> <span>Yes</span></label>
-          <label><input type="radio" name="progress_billing" value="no"> <span>No</span></label>
+          <label><input type="radio" name="s7_aia" value="Yes - Required" data-export="AIA G702/G703"><span>Yes - Required</span></label>
+          <label><input type="radio" name="s7_aia" value="Yes - Optional" data-export="AIA G702/G703"><span>Yes - Optional/Offered</span></label>
+          <label><input type="radio" name="s7_aia" value="No" data-export="AIA G702/G703"><span>No</span></label>
         </div>
       </div>
 
       <div class="field">
-        <label for="retainage">Do you use retainage?</label>
-        <div class="hint">e.g., 5% holdback until project completion</div>
+        <label class="required">Retainage handling</label>
         <div class="radio-group">
-          <label><input type="radio" name="retainage" value="yes" data-export="Uses Retainage"> <span>Yes</span></label>
-          <label><input type="radio" name="retainage" value="no"> <span>No</span></label>
+          <label><input type="radio" name="s7_retainage" value="No retainage" data-export="Retainage"><span>No retainage</span></label>
+          <label><input type="radio" name="s7_retainage" value="Yes - Fixed %" data-export="Retainage"><span>Yes - Fixed % (e.g., 5%)</span></label>
+          <label><input type="radio" name="s7_retainage" value="Yes - Variable" data-export="Retainage"><span>Yes - Variable by milestone</span></label>
         </div>
       </div>
 
       <div class="field">
-        <label for="retainage_percent">If yes, what is your typical retainage %?</label>
-        <input type="number" id="retainage_percent" name="retainage_percent" data-export="Retainage Percentage" placeholder="e.g., 5" min="0" max="100">
+        <label>Typical retainage percentage (if applicable)</label>
+        <input type="text" data-export="Retainage %" placeholder="e.g., 5%, 10%, N/A">
       </div>
 
       <div class="field">
-        <label for="invoice_formats">What invoice formats/templates do you use?</label>
+        <label class="required">Invoice currency</label>
+        <div class="radio-group">
+          <label><input type="radio" name="s7_invCurrency" value="USD only" data-export="Invoice Currency"><span>USD only</span></label>
+          <label><input type="radio" name="s7_invCurrency" value="CAD only" data-export="Invoice Currency"><span>CAD only</span></label>
+          <label><input type="radio" name="s7_invCurrency" value="Multi-currency by client/project" data-export="Invoice Currency"><span>Multi-currency by client/project</span></label>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="required">Sales tax on services by state/province</label>
+        <div class="radio-group">
+          <label><input type="radio" name="s7_salestax" value="Yes - Complex (varies by state)" data-export="Sales Tax"><span>Yes - Complex (varies by state/province)</span></label>
+          <label><input type="radio" name="s7_salestax" value="Yes - Simple (single rate)" data-export="Sales Tax"><span>Yes - Simple (single rate)</span></label>
+          <label><input type="radio" name="s7_salestax" value="No - Exempt" data-export="Sales Tax"><span>No - Service-exempt jurisdiction(s)</span></label>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>States/provinces with complex sales tax rules</label>
+        <input type="text" data-export="Sales Tax States" placeholder="e.g., CA, NY, TX, ON, BC">
+      </div>
+
+      <div class="field">
+        <label class="required">Invoice format requirement</label>
         <div class="checkbox-group">
-          <label><input type="checkbox" name="invoice_formats" value="summary" data-export="Invoice Format - Summary"> <span>Summary</span></label>
-          <label><input type="checkbox" name="invoice_formats" value="detailed" data-export="Invoice Format - Detailed"> <span>Detailed Line Item</span></label>
-          <label><input type="checkbox" name="invoice_formats" value="timerpt" data-export="Invoice Format - Time Report"> <span>Time Report</span></label>
-          <label><input type="checkbox" name="invoice_formats" value="custom" data-export="Invoice Format - Custom"> <span>Custom</span></label>
+          <label><input type="checkbox" name="s7_invFormat" value="Custom branded" data-export="Invoice Format: Custom"><span>Custom branded template</span></label>
+          <label><input type="checkbox" name="s7_invFormat" value="AIA format" data-export="Invoice Format: AIA"><span>AIA G702/G703</span></label>
+          <label><input type="checkbox" name="s7_invFormat" value="Detail by cost code" data-export="Invoice Format: Detail"><span>Detail by cost code</span></label>
+          <label><input type="checkbox" name="s7_invFormat" value="Summary only" data-export="Invoice Format: Summary"><span>Summary only</span></label>
         </div>
       </div>
 
       <div class="field">
-        <label for="billing_challenges">What are your billing and invoicing challenges?</label>
-        <textarea id="billing_challenges" name="billing_challenges" data-export="Billing & Invoicing Challenges" placeholder="Describe challenges..."></textarea>
+        <label>Invoice delivery method</label>
+        <div class="checkbox-group">
+          <label><input type="checkbox" name="s7_delivery" value="Email PDF" data-export="Invoice Delivery: Email"><span>Email PDF</span></label>
+          <label><input type="checkbox" name="s7_delivery" value="Portal" data-export="Invoice Delivery: Portal"><span>Client portal</span></label>
+          <label><input type="checkbox" name="s7_delivery" value="EDI/API" data-export="Invoice Delivery: EDI"><span>EDI/API</span></label>
+        </div>
       </div>
     </div>
 
-    <!-- Section 8: Project Reporting & Analytics -->
+    <!-- Section 8: Project Reporting & KPIs -->
     <div class="section">
-      <h2>8. Project Reporting & Analytics</h2>
-      <div class="section-desc">Assess KPIs, dashboards, and analytical reporting capabilities</div>
+      <h2>Section 8: Project Reporting & KPIs</h2>
+      <p class="section-desc">Identify reporting requirements and key performance indicators</p>
 
       <div class="field">
-        <label for="key_kpis" class="required">What KPIs are most important to your organization?</label>
+        <label class="required">Key project metrics / KPIs tracked</label>
         <div class="checkbox-group">
-          <label><input type="checkbox" name="key_kpis" value="margin" data-export="KPI - Profit Margin"> <span>Profit Margin</span></label>
-          <label><input type="checkbox" name="key_kpis" value="eac" data-export="KPI - EAC"> <span>Estimate at Completion (EAC)</span></label>
-          <label><input type="checkbox" name="key_kpis" value="etc" data-export="KPI - ETC"> <span>Estimate to Complete (ETC)</span></label>
-          <label><input type="checkbox" name="key_kpis" value="variance" data-export="KPI - Budget Variance"> <span>Budget Variance</span></label>
-          <label><input type="checkbox" name="key_kpis" value="schedule" data-export="KPI - Schedule Performance"> <span>Schedule Performance</span></label>
-          <label><input type="checkbox" name="key_kpis" value="utilization" data-export="KPI - Resource Utilization"> <span>Resource Utilization</span></label>
+          <label><input type="checkbox" name="s8_kpis" value="Margin %" data-export="KPIs: Margin"><span>Margin %</span></label>
+          <label><input type="checkbox" name="s8_kpis" value="EAC/ETC" data-export="KPIs: EAC/ETC"><span>EAC/ETC</span></label>
+          <label><input type="checkbox" name="s8_kpis" value="Resource utilization" data-export="KPIs: Utilization"><span>Resource utilization</span></label>
+          <label><input type="checkbox" name="s8_kpis" value="Project backlog" data-export="KPIs: Backlog"><span>Project backlog</span></label>
+          <label><input type="checkbox" name="s8_kpis" value="On-time delivery %" data-export="KPIs: On-time"><span>On-time delivery %</span></label>
+          <label><input type="checkbox" name="s8_kpis" value="Billings to revenue ratio" data-export="KPIs: Bill-to-Rev"><span>Billings-to-revenue ratio</span></label>
         </div>
       </div>
 
       <div class="field">
-        <label for="dashboards">Do you currently use project dashboards?</label>
+        <label>Other KPIs or custom metrics</label>
+        <input type="text" data-export="Custom Metrics" placeholder="e.g., Client satisfaction, rework %, safety incidents">
+      </div>
+
+      <div class="field">
+        <label class="required">Dashboard / reporting frequency</label>
         <div class="radio-group">
-          <label><input type="radio" name="dashboards" value="yes" data-export="Uses Dashboards"> <span>Yes</span></label>
-          <label><input type="radio" name="dashboards" value="no"> <span>No</span></label>
-          <label><input type="radio" name="dashboards" value="manual"> <span>Manual Reports</span></label>
+          <label><input type="radio" name="s8_dashFreq" value="Daily" data-export="Dashboard Frequency"><span>Daily</span></label>
+          <label><input type="radio" name="s8_dashFreq" value="Weekly" data-export="Dashboard Frequency"><span>Weekly</span></label>
+          <label><input type="radio" name="s8_dashFreq" value="Monthly" data-export="Dashboard Frequency"><span>Monthly</span></label>
+          <label><input type="radio" name="s8_dashFreq" value="As-needed" data-export="Dashboard Frequency"><span>As-needed</span></label>
         </div>
       </div>
 
       <div class="field">
-        <label for="dashboard_frequency">How often do you need project status updates?</label>
+        <label class="required">Who needs dashboard access?</label>
+        <div class="checkbox-group">
+          <label><input type="checkbox" name="s8_dashUsers" value="Executives" data-export="Dashboard Users: Exec"><span>Executive management</span></label>
+          <label><input type="checkbox" name="s8_dashUsers" value="Finance" data-export="Dashboard Users: Finance"><span>Finance / Controller</span></label>
+          <label><input type="checkbox" name="s8_dashUsers" value="Project Managers" data-export="Dashboard Users: PM"><span>Project Managers</span></label>
+          <label><input type="checkbox" name="s8_dashUsers" value="Clients" data-export="Dashboard Users: Client"><span>Clients (limited view)</span></label>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="required">WIP (Work-in-Progress) reporting</label>
         <div class="radio-group">
-          <label><input type="radio" name="dashboard_frequency" value="daily" data-export="Status Report Frequency"> <span>Daily</span></label>
-          <label><input type="radio" name="dashboard_frequency" value="weekly"> <span>Weekly</span></label>
-          <label><input type="radio" name="dashboard_frequency" value="monthly"> <span>Monthly</span></label>
-          <label><input type="radio" name="dashboard_frequency" value="asneeded"> <span>As Needed</span></label>
+          <label><input type="radio" name="s8_wip" value="Yes - Detailed by project" data-export="WIP Reporting"><span>Yes - Detailed by project</span></label>
+          <label><input type="radio" name="s8_wip" value="Yes - Summary only" data-export="WIP Reporting"><span>Yes - Summary only</span></label>
+          <label><input type="radio" name="s8_wip" value="No" data-export="WIP Reporting"><span>No</span></label>
         </div>
       </div>
 
       <div class="field">
-        <label for="earned_value">Do you use Earned Value Management (EVM)?</label>
+        <label class="required">Over/under billing analysis required?</label>
         <div class="radio-group">
-          <label><input type="radio" name="earned_value" value="yes" data-export="Uses Earned Value Management"> <span>Yes</span></label>
-          <label><input type="radio" name="earned_value" value="no"> <span>No</span></label>
-          <label><input type="radio" name="earned_value" value="limited"> <span>Limited Use</span></label>
+          <label><input type="radio" name="s8_overbilling" value="Yes - Monthly" data-export="Over/Under Billing"><span>Yes - Monthly</span></label>
+          <label><input type="radio" name="s8_overbilling" value="Yes - Quarterly" data-export="Over/Under Billing"><span>Yes - Quarterly</span></label>
+          <label><input type="radio" name="s8_overbilling" value="No" data-export="Over/Under Billing"><span>No</span></label>
         </div>
-      </div>
-
-      <div class="field">
-        <label for="reporting_tools">What reporting tools do you currently use?</label>
-        <input type="text" id="reporting_tools" name="reporting_tools" data-export="Current Reporting Tools" placeholder="e.g., Excel, Tableau, Power BI, custom reports...">
-      </div>
-
-      <div class="field">
-        <label for="reporting_gaps">What reporting or analytics gaps do you have?</label>
-        <textarea id="reporting_gaps" name="reporting_gaps" data-export="Reporting & Analytics Gaps" placeholder="Describe gaps and unmet needs..."></textarea>
       </div>
     </div>
 
     <!-- Section 9: Change Orders & Scope Management -->
     <div class="section">
-      <h2>9. Change Orders & Scope Management</h2>
-      <div class="section-desc">Evaluate change order processes and scope tracking</div>
+      <h2>Section 9: Change Orders & Scope Management</h2>
+      <p class="section-desc">Understand change management and scope control processes</p>
 
       <div class="field">
-        <label for="change_order_process" class="required">Describe your change order process</label>
-        <div class="hint">Include initiation, documentation, approval levels, and impact assessment</div>
-        <textarea id="change_order_process" name="change_order_process" data-export="Change Order Process" placeholder="Describe process..."></textarea>
-      </div>
-
-      <div class="field">
-        <label for="change_order_frequency">How frequently do change orders occur in typical projects?</label>
+        <label class="required">Change order process</label>
         <div class="radio-group">
-          <label><input type="radio" name="change_order_frequency" value="rarely" data-export="Change Order Frequency"> <span>Rarely</span></label>
-          <label><input type="radio" name="change_order_frequency" value="occasional"> <span>Occasional</span></label>
-          <label><input type="radio" name="change_order_frequency" value="frequent"> <span>Frequent</span></label>
-          <label><input type="radio" name="change_order_frequency" value="very_frequent"> <span>Very Frequent</span></label>
+          <label><input type="radio" name="s9_coProcess" value="Formal (written documentation)" data-export="Change Order Process"><span>Formal (written documentation)</span></label>
+          <label><input type="radio" name="s9_coProcess" value="Semi-formal (tracked but informal)" data-export="Change Order Process"><span>Semi-formal (tracked but informal)</span></label>
+          <label><input type="radio" name="s9_coProcess" value="Informal (not formally tracked)" data-export="Change Order Process"><span>Informal (not formally tracked)</span></label>
         </div>
       </div>
 
       <div class="field">
-        <label for="scope_tracking">How do you track project scope?</label>
-        <div class="checkbox-group">
-          <label><input type="checkbox" name="scope_tracking" value="requirements" data-export="Scope Tracking - Requirements"> <span>Requirements Traceability</span></label>
-          <label><input type="checkbox" name="scope_tracking" value="deliverables" data-export="Scope Tracking - Deliverables"> <span>Deliverables Register</span></label>
-          <label><input type="checkbox" name="scope_tracking" value="wbs" data-export="Scope Tracking - WBS"> <span>WBS Changes</span></label>
-          <label><input type="checkbox" name="scope_tracking" value="manual" data-export="Scope Tracking - Manual"> <span>Manual Documentation</span></label>
-        </div>
-      </div>
-
-      <div class="field">
-        <label for="impact_assessment">Do you perform impact assessments for changes?</label>
+        <label class="required">Do change orders trigger budget and timeline adjustments?</label>
         <div class="radio-group">
-          <label><input type="radio" name="impact_assessment" value="yes" data-export="Performs Impact Assessment"> <span>Yes, Always</span></label>
-          <label><input type="radio" name="impact_assessment" value="sometimes"> <span>Sometimes</span></label>
-          <label><input type="radio" name="impact_assessment" value="no"> <span>No</span></label>
+          <label><input type="radio" name="s9_coImpact" value="Yes - Both" data-export="Change Order Impact"><span>Yes - Both budget & timeline</span></label>
+          <label><input type="radio" name="s9_coImpact" value="Yes - Budget only" data-export="Change Order Impact"><span>Yes - Budget only</span></label>
+          <label><input type="radio" name="s9_coImpact" value="Yes - Timeline only" data-export="Change Order Impact"><span>Yes - Timeline only</span></label>
+          <label><input type="radio" name="s9_coImpact" value="No" data-export="Change Order Impact"><span>No</span></label>
         </div>
       </div>
 
       <div class="field">
-        <label for="scope_creep">Is scope creep a significant issue?</label>
+        <label class="required">Client approval required for change orders?</label>
         <div class="radio-group">
-          <label><input type="radio" name="scope_creep" value="major" data-export="Scope Creep Impact"> <span>Major Issue</span></label>
-          <label><input type="radio" name="scope_creep" value="moderate"> <span>Moderate Issue</span></label>
-          <label><input type="radio" name="scope_creep" value="minor"> <span>Minor Issue</span></label>
-          <label><input type="radio" name="scope_creep" value="well_managed"> <span>Well Managed</span></label>
+          <label><input type="radio" name="s9_clientApproval" value="Yes - All" data-export="Change Order Approval"><span>Yes - All</span></label>
+          <label><input type="radio" name="s9_clientApproval" value="Yes - Above threshold" data-export="Change Order Approval"><span>Yes - Above threshold (specify)</span></label>
+          <label><input type="radio" name="s9_clientApproval" value="No" data-export="Change Order Approval"><span>No</span></label>
         </div>
       </div>
 
       <div class="field">
-        <label for="change_challenges">What are your change management challenges?</label>
-        <textarea id="change_challenges" name="change_challenges" data-export="Change Management Challenges" placeholder="Describe challenges..."></textarea>
+        <label>If threshold-based, what is the approval threshold?</label>
+        <input type="text" data-export="Change Order Threshold" placeholder="e.g., $5,000, $50,000, or N/A">
+      </div>
+
+      <div class="field">
+        <label class="required">Scope creep tracking</label>
+        <div class="radio-group">
+          <label><input type="radio" name="s9_scopeCreep" value="Formal tracking by change order" data-export="Scope Creep Tracking"><span>Formal tracking by change order</span></label>
+          <label><input type="radio" name="s9_scopeCreep" value="Informal notes/log" data-export="Scope Creep Tracking"><span>Informal notes/log</span></label>
+          <label><input type="radio" name="s9_scopeCreep" value="No formal tracking" data-export="Scope Creep Tracking"><span>No formal tracking</span></label>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="required">Do you handle project change claims (on government contracts)?</label>
+        <div class="radio-group">
+          <label><input type="radio" name="s9_claims" value="Yes - Formal claims process" data-export="Claims Management"><span>Yes - Formal claims process</span></label>
+          <label><input type="radio" name="s9_claims" value="Yes - Informal" data-export="Claims Management"><span>Yes - Informal</span></label>
+          <label><input type="radio" name="s9_claims" value="No" data-export="Claims Management"><span>No</span></label>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Other scope management considerations</label>
+        <input type="text" data-export="Scope Notes" placeholder="e.g., Change request intake system, documentation requirements">
       </div>
     </div>
 
     <!-- Section 10: Additional Notes & Requirements -->
     <div class="section">
-      <h2>10. Additional Notes & Requirements</h2>
-      <div class="section-desc">Capture integrations, permissions, pain points, and migration needs</div>
+      <h2>Section 10: Additional Notes & Requirements</h2>
+      <p class="section-desc">Capture integrations, compliance needs, and success criteria</p>
 
       <div class="field">
-        <label for="required_integrations">What system integrations are critical?</label>
+        <label class="required">Current system integrations needed</label>
         <div class="checkbox-group">
-          <label><input type="checkbox" name="required_integrations" value="accounting" data-export="Integration - Accounting"> <span>Accounting/GL</span></label>
-          <label><input type="checkbox" name="required_integrations" value="ar" data-export="Integration - A/R"> <span>A/R Systems</span></label>
-          <label><input type="checkbox" name="required_integrations" value="hr" data-export="Integration - HR/Payroll"> <span>HR/Payroll</span></label>
-          <label><input type="checkbox" name="required_integrations" value="erp" data-export="Integration - Other ERP"> <span>Other ERP</span></label>
-          <label><input type="checkbox" name="required_integrations" value="pms" data-export="Integration - PMS"> <span>Project Management System</span></label>
+          <label><input type="checkbox" name="s10_integrations" value="Accounting/GL" data-export="Integrations: GL"><span>Accounting / General Ledger</span></label>
+          <label><input type="checkbox" name="s10_integrations" value="Payroll" data-export="Integrations: Payroll"><span>Payroll (ADP, Ceridian, etc.)</span></label>
+          <label><input type="checkbox" name="s10_integrations" value="CRM" data-export="Integrations: CRM"><span>CRM (Salesforce, HubSpot)</span></label>
+          <label><input type="checkbox" name="s10_integrations" value="HR/HRIS" data-export="Integrations: HRIS"><span>HR / HRIS</span></label>
+          <label><input type="checkbox" name="s10_integrations" value="Document Management" data-export="Integrations: DMS"><span>Document Management / SharePoint</span></label>
+          <label><input type="checkbox" name="s10_integrations" value="Other" data-export="Integrations: Other"><span>Other (specify below)</span></label>
         </div>
       </div>
 
       <div class="field">
-        <label for="key_roles">Who are the key system user roles?</label>
-        <div class="checkbox-group">
-          <label><input type="checkbox" name="key_roles" value="admin" data-export="Role - Admin"> <span>Administrator</span></label>
-          <label><input type="checkbox" name="key_roles" value="pm" data-export="Role - Project Manager"> <span>Project Manager</span></label>
-          <label><input type="checkbox" name="key_roles" value="accountant" data-export="Role - Accountant"> <span>Accountant</span></label>
-          <label><input type="checkbox" name="key_roles" value="employee" data-export="Role - Employee"> <span>Employee/Resource</span></label>
-          <label><input type="checkbox" name="key_roles" value="executive" data-export="Role - Executive"> <span>Executive</span></label>
+        <label>If "Other" integrations, describe</label>
+        <input type="text" data-export="Other Integrations" placeholder="e.g., Custom ERP, BI tools, forecasting software">
+      </div>
+
+      <div class="field">
+        <label class="required">Data migration required?</label>
+        <div class="radio-group">
+          <label><input type="radio" name="s10_migration" value="Yes - Full history" data-export="Data Migration"><span>Yes - Full project history</span></label>
+          <label><input type="radio" name="s10_migration" value="Yes - Last N years" data-export="Data Migration"><span>Yes - Last N years</span></label>
+          <label><input type="radio" name="s10_migration" value="No" data-export="Data Migration"><span>No - Fresh start</span></label>
         </div>
       </div>
 
       <div class="field">
-        <label for="current_pain_points">What are your biggest current pain points?</label>
-        <textarea id="current_pain_points" name="current_pain_points" data-export="Current Pain Points" placeholder="Describe top 3-5 issues..."></textarea>
+        <label>If migration needed, how many years of data?</label>
+        <input type="number" data-export="Migration Years" placeholder="e.g., 3, 5, 10" min="1">
       </div>
 
       <div class="field">
-        <label for="success_criteria">What would success look like for this implementation?</label>
-        <textarea id="success_criteria" name="success_criteria" data-export="Success Criteria & Goals" placeholder="Define key outcomes and benefits..."></textarea>
+        <label class="required">Compliance requirements</label>
+        <div class="checkbox-group">
+          <label><input type="checkbox" name="s10_compliance" value="SOX" data-export="Compliance: SOX"><span>SOX (Public company)</span></label>
+          <label><input type="checkbox" name="s10_compliance" value="FAR/DFARS" data-export="Compliance: FAR"><span>FAR/DFARS (Government contracts)</span></label>
+          <label><input type="checkbox" name="s10_compliance" value="GST/HST (Canada)" data-export="Compliance: GST"><span>GST/HST (Canadian taxes)</span></label>
+          <label><input type="checkbox" name="s10_compliance" value="Provincial regulations" data-export="Compliance: Prov"><span>Provincial regulations (Canada)</span></label>
+          <label><input type="checkbox" name="s10_compliance" value="State regulations" data-export="Compliance: State"><span>State regulations (US)</span></label>
+          <label><input type="checkbox" name="s10_compliance" value="None" data-export="Compliance: None"><span>No special compliance</span></label>
+        </div>
       </div>
 
       <div class="field">
-        <label for="migration_considerations">Any migration considerations from current system?</label>
-        <div class="hint">e.g., data migration needs, cutover approach, parallel run requirements</div>
-        <textarea id="migration_considerations" name="migration_considerations" data-export="Migration Considerations" placeholder="Describe migration needs..."></textarea>
+        <label class="required">User roles & permissions structure</label>
+        <div class="radio-group">
+          <label><input type="radio" name="s10_roles" value="Simple (3-5 roles)" data-export="User Roles"><span>Simple (3-5 roles)</span></label>
+          <label><input type="radio" name="s10_roles" value="Moderate (5-10 roles)" data-export="User Roles"><span>Moderate (5-10 roles)</span></label>
+          <label><input type="radio" name="s10_roles" value="Complex (>10 roles)" data-export="User Roles"><span>Complex (>10 roles with fine-grained permissions)</span></label>
+        </div>
       </div>
 
       <div class="field">
-        <label for="additional_notes">Any additional notes or requirements</label>
-        <textarea id="additional_notes" name="additional_notes" data-export="Additional Notes" placeholder="Capture any other important information..."></textarea>
+        <label>Describe key user role requirements</label>
+        <input type="text" data-export="Role Requirements" placeholder="e.g., Executive visibility, PM controls, finance approval workflows">
+      </div>
+
+      <div class="field">
+        <label class="required">Primary success criteria for this implementation</label>
+        <textarea data-export="Success Criteria" placeholder="e.g., Accurate project costing within 5%, faster invoicing turnaround, real-time margin visibility, government contract compliance, improved resource planning"></textarea>
+      </div>
+
+      <div class="field">
+        <label>Additional notes or requirements</label>
+        <textarea data-export="Additional Notes" placeholder="Any other considerations for the NetSuite implementation..."></textarea>
       </div>
     </div>
 
-  </form>
-
-  <!-- Button Bar -->
-  <div class="btn-bar">
-    <button type="button" class="btn btn-secondary" id="clearBtn">Clear Form</button>
-    <button type="button" class="btn btn-primary" id="exportBtn">Export to Excel</button>
-    <button type="button" class="btn btn-drive" id="driveBtn">
-      <span class="drive-icon">☁️</span> Save to Google Drive
-    </button>
   </div>
 
-</div>
+  <div class="btn-bar">
+    <button class="btn btn-secondary" onclick="clearForm()">Clear Form</button>
+    <button class="btn btn-primary" onclick="exportToExcel()">Export to Excel</button>
+    <button class="btn btn-drive" id="btnDrive" onclick="saveToDrive()" disabled title="Loading Google Drive..."><span class="drive-icon">📁</span> Save to Google Drive</button>
+  </div>
 
-<!-- Toast Notification -->
-<div class="toast" id="toast"></div>
+  <div class="toast" id="toast">Exported successfully!</div>
 
-<script>
-// Configuration
-const SHEET_NAME = 'Project Mgmt & Job Costing';
-const FILE_PREFIX = 'Project-Mgmt-Job-Costing';
-
-// Initialize
-document.addEventListener('DOMContentLoaded', function() {
-  updateProgress();
-  document.getElementById('session_date').valueAsDate = new Date();
-
-  // Event listeners
-  document.getElementById('discoveryForm').addEventListener('change', updateProgress);
-  document.getElementById('discoveryForm').addEventListener('input', updateProgress);
-  document.getElementById('clearBtn').addEventListener('click', clearForm);
-  document.getElementById('exportBtn').addEventListener('click', exportToExcel);
-  document.getElementById('driveBtn').addEventListener('click', saveToGoogleDrive);
-});
-
-// Progress tracking
+  <script>
 function updateProgress() {
-  const form = document.getElementById('discoveryForm');
-  const inputs = form.querySelectorAll('input, textarea, select');
-  let filled = 0;
+  const fields = document.querySelectorAll('input[type="text"], input[type="number"], input[type="date"], select, textarea');
+  const radios = {};
+  document.querySelectorAll('input[type="radio"]').forEach(r => { if(r.checked) radios[r.name] = true; });
+  const checkboxes = {};
+  document.querySelectorAll('input[type="checkbox"]').forEach(c => { if(c.checked) checkboxes[c.closest('.field')?.querySelector('label')?.textContent || 'x'] = true; });
+  let filled = 0, total = 0;
+  fields.forEach(f => { total++; if(f.value.trim()) filled++; });
+  const radioGroups = new Set();
+  document.querySelectorAll('input[type="radio"]').forEach(r => radioGroups.add(r.name));
+  total += radioGroups.size;
+  filled += Object.keys(radios).length;
+  const pct = total > 0 ? Math.round((filled / total) * 100) : 0;
+  document.getElementById('progressPct').textContent = pct + '%';
+  document.getElementById('progressFill').style.width = pct + '%';
+}
+document.addEventListener('input', updateProgress);
+document.addEventListener('change', updateProgress);
 
-  inputs.forEach(input => {
-    if (input.type === 'checkbox' || input.type === 'radio') {
-      if (input.checked) filled++;
-    } else if (input.value.trim() !== '') {
-      filled++;
-    }
+function exportToExcel() {
+  const data = [];
+  const sections = document.querySelectorAll('.section, .meta-section');
+  sections.forEach(section => {
+    const sectionTitle = section.querySelector('h2')?.textContent || '';
+    const fields = section.querySelectorAll('.field');
+    fields.forEach(field => {
+      const label = field.querySelector('label')?.textContent?.replace(' *', '') || '';
+      let value = '';
+      const input = field.querySelector('input[type="text"], input[type="number"], input[type="date"], select, textarea');
+      if (input) { value = input.value; }
+      const checkedRadio = field.querySelector('input[type="radio"]:checked');
+      if (checkedRadio) { value = checkedRadio.value; }
+      const checkedBoxes = field.querySelectorAll('input[type="checkbox"]:checked');
+      if (checkedBoxes.length > 0) { value = Array.from(checkedBoxes).map(c => c.value).join(', '); }
+      data.push({ 'Section': sectionTitle, 'Question': label, 'Response': value });
+    });
   });
-
-  const percentage = Math.round((filled / inputs.length) * 100);
-  document.getElementById('progressFill').style.width = percentage + '%';
-  document.getElementById('progressText').textContent = `Progress: ${percentage}%`;
+  const ws = XLSX.utils.json_to_sheet(data);
+  ws['!cols'] = [{ wch: 30 }, { wch: 60 }, { wch: 60 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Project Mgmt & Job Costing');
+  const clientName = document.querySelector('[data-export="Client Name"]')?.value || 'Client';
+  const date = new Date().toISOString().split('T')[0];
+  XLSX.writeFile(wb, `${clientName}_Project-Mgmt-Job-Costing_${date}.xlsx`);
+  showToast();
 }
 
-// Clear form
 function clearForm() {
-  if (confirm('Are you sure you want to clear the entire form? This cannot be undone.')) {
-    document.getElementById('discoveryForm').reset();
-    document.getElementById('session_date').valueAsDate = new Date();
+  if (confirm('Are you sure you want to clear all fields?')) {
+    document.querySelectorAll('input[type="text"], input[type="number"], input[type="date"], textarea').forEach(f => f.value = '');
+    document.querySelectorAll('select').forEach(s => s.selectedIndex = 0);
+    document.querySelectorAll('input[type="radio"], input[type="checkbox"]').forEach(c => c.checked = false);
     updateProgress();
-    showToast('Form cleared', '#f59e0b');
   }
 }
 
-// Export to Excel
-function exportToExcel() {
-  const form = document.getElementById('discoveryForm');
-  const workbook = XLSX.utils.book_new();
-
-  // Prepare data
-  const data = [];
-  const inputs = form.querySelectorAll('[data-export]');
-
-  inputs.forEach(input => {
-    const label = input.getAttribute('data-export');
-    let value = '';
-
-    if (input.type === 'checkbox') {
-      if (input.checked) value = 'Yes';
-    } else if (input.type === 'radio') {
-      if (input.checked) value = input.value;
-    } else {
-      value = input.value;
-    }
-
-    if (value) {
-      data.push([label, value]);
-    }
-  });
-
-  // Create worksheet
-  const worksheet = XLSX.utils.aoa_to_sheet(data);
-  worksheet['!cols'] = [{ wch: 35 }, { wch: 50 }];
-
-  XLSX.utils.book_append_sheet(workbook, worksheet, SHEET_NAME);
-
-  // Generate filename with timestamp
-  const timestamp = new Date().toISOString().slice(0, 10);
-  const filename = `${FILE_PREFIX}_${timestamp}.xlsx`;
-
-  XLSX.writeFile(workbook, filename);
-  showToast(`Exported to ${filename}`, '#10b981');
+function showToast() {
+  const t = document.getElementById('toast');
+  t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 2500);
 }
-
-// Save to Google Drive
-function saveToGoogleDrive() {
-  const btn = document.getElementById('driveBtn');
-  btn.disabled = true;
-  btn.textContent = 'Saving...';
-
-  setTimeout(() => {
-    showToast('Google Drive integration requires additional setup', '#3b82f6');
-    btn.disabled = false;
-    btn.innerHTML = '<span class="drive-icon">☁️</span> Save to Google Drive';
-  }, 2000);
-}
-
-// Toast notification
-function showToast(message, color = '#10b981') {
-  const toast = document.getElementById('toast');
-  toast.textContent = message;
-  toast.style.background = color;
-  toast.style.display = 'block';
-
-  setTimeout(() => {
-    toast.style.display = 'none';
-  }, 3000);
-}
-
-// Google API stubs
-function gapiLoaded() {}
-function gisLoaded() {}
-</script>
-
+  </script>
 </body>
 </html>

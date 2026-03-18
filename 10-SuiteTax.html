@@ -11,9 +11,6 @@ body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background
 .header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); color: white; padding: 40px 20px; text-align: center; }
 .header h1 { font-size: 28px; margin-bottom: 8px; }
 .header p { opacity: 0.85; font-size: 15px; max-width: 600px; margin: 0 auto; }
-.header-back { text-align: left; padding: 20px 20px 0; }
-.header-back a { color: #4a90d9; text-decoration: none; font-size: 14px; font-weight: 600; }
-.header-back a:hover { text-decoration: underline; }
 .container { max-width: 900px; margin: 30px auto; padding: 0 20px 60px; }
 .meta-section { background: white; border-radius: 12px; padding: 30px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
 .meta-section h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #0f3460; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #e8ecf1; }
@@ -56,427 +53,527 @@ body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background
 <script src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
 </head>
 <body>
-<div class="header-back">
-  <a href="index.html">← Back to Index</a>
-</div>
+
 <div class="header">
-  <h1>NetSuite ERP Discovery: SuiteTax</h1>
-  <p>Comprehensive tax compliance assessment and configuration discovery for NetSuite implementations</p>
+  <a href="index.html" style="color:rgba(255,255,255,0.7);text-decoration:none;font-size:13px;display:inline-block;margin-bottom:10px;">&larr; Back to all forms</a>
+  <h1>SuiteTax</h1>
+  <p>NetSuite ERP Discovery Questionnaire — Complete all sections during the discovery session with the client</p>
 </div>
 
 <div class="container">
-  <div class="meta-section">
-    <h2>Session Information</h2>
-    <div class="grid-2">
-      <div class="field">
-        <label class="required">Company Name</label>
-        <input type="text" id="session_company" data-export="Company Name" placeholder="Enter company name">
-      </div>
-      <div class="field">
-        <label class="required">Assessment Date</label>
-        <input type="date" id="session_date" data-export="Assessment Date">
-      </div>
-    </div>
-    <div class="grid-2">
-      <div class="field">
-        <label class="required">Interviewer Name</label>
-        <input type="text" id="session_interviewer" data-export="Interviewer Name" placeholder="Your name">
-      </div>
-      <div class="field">
-        <label>Contact Email</label>
-        <input type="text" id="session_email" data-export="Contact Email" placeholder="email@company.com">
-      </div>
+
+<div class="meta-section">
+  <h2>Session Information</h2>
+  <div class="grid-2">
+    <div class="field"><label class="required">Client / Company Name</label><input type="text" data-export="Client Name"></div>
+    <div class="field"><label class="required">Completed By</label><input type="text" data-export="Completed By"></div>
+    <div class="field"><label>Date</label><input type="date" data-export="Date"></div>
+    <div class="field"><label>Session Attendees</label><input type="text" data-export="Attendees" placeholder="Names and roles"></div>
+  </div>
+</div>
+
+<div class="progress-text">Completion: <span id="progressPct">0%</span></div>
+<div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+
+<!-- SECTION 1: Tax Compliance Overview -->
+<div class="section">
+  <h2>1. Tax Compliance Overview</h2>
+  <p class="section-desc">Understand the client's current tax jurisdiction landscape and compliance obligations across US states and Canadian provinces.</p>
+
+  <div class="field">
+    <label class="required">Primary Country of Operations</label>
+    <div class="radio-group">
+      <label><input type="radio" name="s1_country" value="us-only"> <span>US Only</span></label>
+      <label><input type="radio" name="s1_country" value="ca-only"> <span>Canada Only</span></label>
+      <label><input type="radio" name="s1_country" value="us-ca"> <span>US & Canada</span></label>
     </div>
   </div>
 
-  <div class="progress-text">Assessment Progress: <strong id="progress-percent">0</strong>%</div>
-  <div class="progress-bar">
-    <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+  <div class="field">
+    <label>US States with Sales Tax Obligations</label>
+    <div class="hint">Enter states where you have nexus (e.g., CA, TX, NY, FL)</div>
+    <input type="text" data-export="US States Obligated" placeholder="e.g., CA, TX, NY, IL, WA, MA">
   </div>
 
-  <!-- Section 1: Tax Compliance Overview -->
-  <div class="section">
-    <h2>1. Tax Compliance Overview</h2>
-    <div class="section-desc">Document current tax landscape, compliance obligations, and existing tax systems</div>
+  <div class="field">
+    <label>Canadian Provinces with Tax Obligations</label>
+    <div class="hint">Indicate provinces with GST/HST/PST exposure</div>
+    <input type="text" data-export="Canadian Provinces Obligated" placeholder="e.g., ON, BC, AB, QC">
+  </div>
 
-    <div class="field">
-      <label class="required">Tax Jurisdictions</label>
-      <div class="hint">List all states/countries where your company is tax registered or has tax obligations</div>
-      <textarea id="s1_jurisdictions" data-export="Tax Jurisdictions" placeholder="E.g., CA, NY, TX, UK, Canada..."></textarea>
-    </div>
-
-    <div class="field">
-      <label class="required">Tax Types</label>
-      <div class="hint">Select all applicable tax types</div>
-      <div class="checkbox-group">
-        <label><input type="checkbox" name="s1_tax_types" value="sales-tax"> <span>Sales Tax</span></label>
-        <label><input type="checkbox" name="s1_tax_types" value="use-tax"> <span>Use Tax</span></label>
-        <label><input type="checkbox" name="s1_tax_types" value="vat"> <span>VAT</span></label>
-        <label><input type="checkbox" name="s1_tax_types" value="gst"> <span>GST</span></label>
-        <label><input type="checkbox" name="s1_tax_types" value="withholding"> <span>Withholding Tax</span></label>
-      </div>
-    </div>
-
-    <div class="field">
-      <label class="required">Current Tax Engine/System</label>
-      <div class="hint">What system currently handles tax calculations?</div>
-      <input type="text" id="s1_engine" data-export="Current Tax Engine" placeholder="E.g., Manual calculations, Avalara, Vertex, Legacy system...">
-    </div>
-
-    <div class="field">
-      <label class="required">Compliance Filing Frequency</label>
-      <div class="hint">How often must you file tax returns?</div>
-      <div class="radio-group">
-        <label><input type="radio" name="s1_filing" value="monthly"> <span>Monthly</span></label>
-        <label><input type="radio" name="s1_filing" value="quarterly"> <span>Quarterly</span></label>
-        <label><input type="radio" name="s1_filing" value="annually"> <span>Annually</span></label>
-        <label><input type="radio" name="s1_filing" value="variable"> <span>Variable</span></label>
-      </div>
-    </div>
-
-    <div class="field">
-      <label>Number of Tax Jurisdictions with Active Compliance</label>
-      <input type="number" id="s1_count" data-export="Active Tax Jurisdictions Count" placeholder="0">
+  <div class="field">
+    <label>Current Tax Filing Frequency</label>
+    <div class="radio-group">
+      <label><input type="radio" name="s1_frequency" value="monthly"> <span>Monthly</span></label>
+      <label><input type="radio" name="s1_frequency" value="quarterly"> <span>Quarterly</span></label>
+      <label><input type="radio" name="s1_frequency" value="annual"> <span>Annual</span></label>
+      <label><input type="radio" name="s1_frequency" value="mixed"> <span>Mixed by jurisdiction</span></label>
     </div>
   </div>
 
-  <!-- Section 2: Nexus & Tax Registration -->
-  <div class="section">
-    <h2>2. Nexus & Tax Registration</h2>
-    <div class="section-desc">Understand nexus establishment and tax registration requirements across jurisdictions</div>
+  <div class="field">
+    <label>Tax Compliance Challenges</label>
+    <div class="hint">Describe current pain points with multi-jurisdiction tax</div>
+    <textarea data-export="Tax Compliance Challenges" placeholder="e.g., difficulty tracking nexus thresholds, manual rate updates, multistate complexity"></textarea>
+  </div>
 
-    <div class="field">
-      <label class="required">Nexus States/Countries</label>
-      <div class="hint">List all states/countries where you have tax nexus (physical, economic, or marketplace)</div>
-      <textarea id="s2_nexus" data-export="Nexus States/Countries" placeholder="E.g., CA (physical), NY (economic), TX (marketplace)..."></textarea>
+  <div class="field">
+    <label>Federal vs State/Provincial Tax Breakdown Needed</label>
+    <div class="radio-group">
+      <label><input type="radio" name="s1_breakdown" value="yes"> <span>Yes, separate reporting</span></label>
+      <label><input type="radio" name="s1_breakdown" value="combined"> <span>Combined reporting preferred</span></label>
+      <label><input type="radio" name="s1_breakdown" value="unsure"> <span>Unsure</span></label>
     </div>
+  </div>
+</div>
 
-    <div class="field">
-      <label class="required">Tax Registration Numbers</label>
-      <div class="hint">Do you have tax registration numbers (VATIN, GST numbers) for key jurisdictions?</div>
-      <div class="radio-group">
-        <label><input type="radio" name="s2_registration" value="yes"> <span>Yes - Comprehensive</span></label>
-        <label><input type="radio" name="s2_registration" value="partial"> <span>Yes - Partial</span></label>
-        <label><input type="radio" name="s2_registration" value="no"> <span>No</span></label>
-      </div>
-    </div>
+<!-- SECTION 2: US State Sales Tax & Nexus -->
+<div class="section">
+  <h2>2. US State Sales Tax & Nexus</h2>
+  <p class="section-desc">Deep dive into nexus strategy, economic thresholds, and sales tax requirements following South Dakota v. Wayfair.</p>
 
-    <div class="field">
-      <label>Economic Nexus Thresholds</label>
-      <div class="hint">Do you track economic nexus thresholds by jurisdiction?</div>
-      <textarea id="s2_thresholds" data-export="Economic Nexus Thresholds" placeholder="E.g., CA: $600K revenue, NY: $100K transactions..."></textarea>
-    </div>
-
-    <div class="field">
-      <label class="required">Marketplace Facilitator Obligations</label>
-      <div class="hint">Do you sell through online marketplaces? Which ones? Does the marketplace handle tax?</div>
-      <textarea id="s2_marketplace" data-export="Marketplace Facilitator Obligations" placeholder="E.g., Amazon (platform handles), eBay, Shopify..."></textarea>
-    </div>
-
-    <div class="field">
-      <label>Nexus Review Frequency</label>
-      <div class="hint">How often is nexus reviewed for new jurisdictions?</div>
-      <input type="text" id="s2_review" data-export="Nexus Review Frequency" placeholder="E.g., Quarterly, Annually, Ad-hoc...">
+  <div class="field">
+    <label class="required">Types of Nexus Present</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" name="s2_nexus" value="physical"> <span>Physical (offices, warehouses)</span></label>
+      <label><input type="checkbox" name="s2_nexus" value="economic"> <span>Economic (South Dakota v. Wayfair)</span></label>
+      <label><input type="checkbox" name="s2_nexus" value="affiliate"> <span>Affiliate (subsidiaries, agents)</span></label>
+      <label><input type="checkbox" name="s2_nexus" value="marketplace"> <span>Marketplace facilitator (Amazon, Shopify)</span></label>
     </div>
   </div>
 
-  <!-- Section 3: Sales & Use Tax Configuration -->
-  <div class="section">
-    <h2>3. Sales & Use Tax Configuration</h2>
-    <div class="section-desc">Detailed configuration of taxability rules, tax codes, and exemption management</div>
-
-    <div class="field">
-      <label class="required">Taxability Rules Complexity</label>
-      <div class="hint">How complex are your taxability rules by item/service?</div>
-      <div class="radio-group">
-        <label><input type="radio" name="s3_complexity" value="simple"> <span>Simple (one rate)</span></label>
-        <label><input type="radio" name="s3_complexity" value="moderate"> <span>Moderate (variable)</span></label>
-        <label><input type="radio" name="s3_complexity" value="complex"> <span>Complex (multiple factors)</span></label>
-      </div>
-    </div>
-
-    <div class="field">
-      <label class="required">Tax Codes in Use</label>
-      <div class="hint">Approximate number of unique tax codes configured</div>
-      <input type="number" id="s3_taxcodes" data-export="Number of Tax Codes" placeholder="0">
-    </div>
-
-    <div class="field">
-      <label class="required">Item-Level Taxability Matrix</label>
-      <div class="hint">How are items classified for tax purposes?</div>
-      <textarea id="s3_matrix" data-export="Item Taxability Matrix" placeholder="E.g., Physical goods (taxable), Services (jurisdiction-specific), Shipping (varies)..."></textarea>
-    </div>
-
-    <div class="field">
-      <label class="required">Tax Schedules & Effective Dates</label>
-      <div class="hint">Are tax schedules defined with effective dates? Any seasonal variations?</div>
-      <textarea id="s3_schedules" data-export="Tax Schedules" placeholder="E.g., Standard (effective 01/01), Holiday period variations..."></textarea>
-    </div>
-
-    <div class="field">
-      <label>Exemption Certificate Management</label>
-      <div class="hint">How do you currently manage resale/exemption certificates?</div>
-      <textarea id="s3_exemption" data-export="Exemption Certificate Management" placeholder="E.g., Digital storage, linked to customer, expiration tracking..."></textarea>
-    </div>
-
-    <div class="field">
-      <label>Current Taxability Research Process</label>
-      <div class="hint">How do you handle taxability questions for new products or jurisdictions?</div>
-      <input type="text" id="s3_research" data-export="Taxability Research Process" placeholder="E.g., Manual review, third-party lookup, legal counsel...">
+  <div class="field">
+    <label>Economic Nexus Threshold Tracking</label>
+    <div class="hint">Do you monitor sales/transaction thresholds ($100K or 200 transactions)?</div>
+    <div class="radio-group">
+      <label><input type="radio" name="s2_economic" value="yes-auto"> <span>Yes, automated tracking</span></label>
+      <label><input type="radio" name="s2_economic" value="yes-manual"> <span>Yes, manual tracking</span></label>
+      <label><input type="radio" name="s2_economic" value="no"> <span>No tracking in place</span></label>
     </div>
   </div>
 
-  <!-- Section 4: Tax Rate Management -->
-  <div class="section">
-    <h2>4. Tax Rate Management</h2>
-    <div class="section-desc">Track tax rate sources, tables, combined rates, and rate override procedures</div>
+  <div class="field">
+    <label>Marketplace Facilitator Sales</label>
+    <div class="hint">Do you sell through Amazon, Shopify, eBay, or other platforms?</div>
+    <input type="text" data-export="Marketplace Channels" placeholder="e.g., Amazon FBA, Shopify store, eBay">
+  </div>
 
-    <div class="field">
-      <label class="required">Tax Rate Source</label>
-      <div class="hint">How are tax rates populated and maintained?</div>
-      <div class="radio-group">
-        <label><input type="radio" name="s4_source" value="manual"> <span>Manual Entry</span></label>
-        <label><input type="radio" name="s4_source" value="automated"> <span>Automated Feed</span></label>
-        <label><input type="radio" name="s4_source" value="hybrid"> <span>Hybrid</span></label>
-      </div>
-    </div>
-
-    <div class="field">
-      <label class="required">Combined Rate Handling</label>
-      <div class="hint">How are state, county, city, and special district rates combined?</div>
-      <textarea id="s4_combined" data-export="Combined Rate Handling" placeholder="E.g., Additive (7% + 0.5% + 0.25%), jurisdiction-specific formulas..."></textarea>
-    </div>
-
-    <div class="field">
-      <label class="required">Rate Update Frequency</label>
-      <div class="hint">How often are tax rates reviewed and updated?</div>
-      <input type="text" id="s4_frequency" data-export="Rate Update Frequency" placeholder="E.g., Monthly, Quarterly, Event-driven...">
-    </div>
-
-    <div class="field">
-      <label>Rate Effective Date Management</label>
-      <div class="hint">How do you handle effective dates for rate changes?</div>
-      <textarea id="s4_effective" data-export="Rate Effective Date Management" placeholder="E.g., Retroactive updates, forward-dated changes..."></textarea>
-    </div>
-
-    <div class="field">
-      <label>Rate Overrides & Exceptions</label>
-      <div class="hint">Are there customer-specific or order-specific rate overrides?</div>
-      <textarea id="s4_overrides" data-export="Rate Overrides" placeholder="E.g., Wholesale customer rates, promotional rates..."></textarea>
+  <div class="field">
+    <label>Sales Tax Sourcing Method</label>
+    <div class="radio-group">
+      <label><input type="radio" name="s2_sourcing" value="origin"> <span>Origin-based (seller's location)</span></label>
+      <label><input type="radio" name="s2_sourcing" value="destination"> <span>Destination-based (buyer's location)</span></label>
+      <label><input type="radio" name="s2_sourcing" value="both"> <span>Both, depending on transaction type</span></label>
     </div>
   </div>
 
-  <!-- Section 5: Tax Exemptions & Certificates -->
-  <div class="section">
-    <h2>5. Tax Exemptions & Certificates</h2>
-    <div class="section-desc">Manage exempt customer types, certificates, and expiration tracking</div>
+  <div class="field">
+    <label>State-by-State Nexus Summary</label>
+    <div class="hint">Provide snapshot of physical/economic nexus by state</div>
+    <textarea data-export="State Nexus Summary" placeholder="e.g., CA: physical + economic; TX: economic only; NY: physical (office in NYC)"></textarea>
+  </div>
 
-    <div class="field">
-      <label class="required">Exempt Customer Types</label>
-      <div class="hint">Select all applicable exempt customer types</div>
-      <div class="checkbox-group">
-        <label><input type="checkbox" name="s5_exempt" value="reseller"> <span>Resellers</span></label>
-        <label><input type="checkbox" name="s5_exempt" value="government"> <span>Government</span></label>
-        <label><input type="checkbox" name="s5_exempt" value="nonprofit"> <span>Non-Profit</span></label>
-        <label><input type="checkbox" name="s5_exempt" value="other"> <span>Other</span></label>
-      </div>
-    </div>
+  <div class="field">
+    <label>Affiliate Nexus Exposure</label>
+    <div class="hint">Related companies, subsidiaries, or agent networks?</div>
+    <input type="text" data-export="Affiliate Entities" placeholder="e.g., XYZ Corp subsidiary, affiliate in CA, commissioned agents in 3 states">
+  </div>
+</div>
 
-    <div class="field">
-      <label class="required">Certificate Storage & Tracking</label>
-      <div class="hint">How are exemption certificates stored and linked to customers?</div>
-      <textarea id="s5_storage" data-export="Certificate Storage" placeholder="E.g., NetSuite attachments, cloud storage, third-party system..."></textarea>
-    </div>
+<!-- SECTION 3: Canadian GST/HST/PST/QST -->
+<div class="section">
+  <h2>3. Canadian GST/HST/PST/QST</h2>
+  <p class="section-desc">Multi-tier Canadian tax structure including federal GST, harmonized HST, and provincial PST/QST.</p>
 
-    <div class="field">
-      <label class="required">Certificate Expiration Tracking</label>
-      <div class="hint">Do you track and alert on expiring exemption certificates?</div>
-      <div class="radio-group">
-        <label><input type="radio" name="s5_expiration" value="yes"> <span>Yes - Automated</span></label>
-        <label><input type="radio" name="s5_expiration" value="manual"> <span>Yes - Manual</span></label>
-        <label><input type="radio" name="s5_expiration" value="no"> <span>No</span></label>
-      </div>
-    </div>
-
-    <div class="field">
-      <label>Resale Certificate Details</label>
-      <div class="hint">How are resale certificates identified and validated?</div>
-      <textarea id="s5_resale" data-export="Resale Certificate Details" placeholder="E.g., By certificate number, customer state registration..."></textarea>
-    </div>
-
-    <div class="field">
-      <label>Government Exemption Tracking</label>
-      <div class="hint">How do you identify and track government customer exemptions?</div>
-      <input type="text" id="s5_government" data-export="Government Exemption Tracking" placeholder="E.g., Customer class flag, customer type field...">
+  <div class="field">
+    <label class="required">GST/HST Registration Status</label>
+    <div class="radio-group">
+      <label><input type="radio" name="s3_gst_status" value="registered"> <span>Registered for GST/HST</span></label>
+      <label><input type="radio" name="s3_gst_status" value="small-supplier"> <span>Small supplier (under $30K)</span></label>
+      <label><input type="radio" name="s3_gst_status" value="not-required"> <span>Not required (non-Canadian)</span></label>
     </div>
   </div>
 
-  <!-- Section 6: International Tax / VAT / GST -->
-  <div class="section">
-    <h2>6. International Tax / VAT / GST</h2>
-    <div class="section-desc">Cross-border, VAT, and GST compliance requirements</div>
-
-    <div class="field">
-      <label>VAT Registration Numbers</label>
-      <div class="hint">List company VAT/VATIN numbers by country</div>
-      <textarea id="s6_vat" data-export="VAT Registration Numbers" placeholder="E.g., UK: GB123456789, DE: DE987654321..."></textarea>
-    </div>
-
-    <div class="field">
-      <label class="required">VAT Reverse Charge Rules</label>
-      <div class="hint">Which transaction types qualify for reverse charge?</div>
-      <textarea id="s6_reverse" data-export="VAT Reverse Charge Rules" placeholder="E.g., B2B services to EU, specific categories..."></textarea>
-    </div>
-
-    <div class="field">
-      <label>Intrastat Reporting Requirements</label>
-      <div class="hint">Do you need to file intrastat reports? For which countries?</div>
-      <textarea id="s6_intrastat" data-export="Intrastat Reporting" placeholder="E.g., EU trade reporting for goods shipments..."></textarea>
-    </div>
-
-    <div class="field">
-      <label class="required">Place of Supply Rules</label>
-      <div class="hint">How do you determine place of supply for VAT purposes?</div>
-      <textarea id="s6_supply" data-export="Place of Supply Rules" placeholder="E.g., Customer location for B2C, supplier location for B2B services..."></textarea>
-    </div>
-
-    <div class="field">
-      <label>Withholding Tax Requirements</label>
-      <div class="hint">Which jurisdictions require withholding tax on payments?</div>
-      <textarea id="s6_withholding" data-export="Withholding Tax Requirements" placeholder="E.g., India (10% on services), Mexico (35% on consulting)..."></textarea>
-    </div>
-
-    <div class="field">
-      <label>Tax Reporting by Country</label>
-      <div class="hint">List countries with separate tax reporting requirements</div>
-      <input type="text" id="s6_countries" data-export="Tax Reporting Countries" placeholder="E.g., UK, Germany, Canada, Australia...">
+  <div class="field">
+    <label>Provinces with HST Exposure (Harmonized 13-15%)</label>
+    <div class="hint">Ontario 13%, Nova Scotia 15%, Newfoundland 15%, New Brunswick 15%, PEI 15%</div>
+    <div class="checkbox-group">
+      <label><input type="checkbox" name="s3_hst" value="ON"> <span>Ontario (13%)</span></label>
+      <label><input type="checkbox" name="s3_hst" value="NS"> <span>Nova Scotia (15%)</span></label>
+      <label><input type="checkbox" name="s3_hst" value="NL"> <span>Newfoundland (15%)</span></label>
+      <label><input type="checkbox" name="s3_hst" value="NB"> <span>New Brunswick (15%)</span></label>
+      <label><input type="checkbox" name="s3_hst" value="PE"> <span>PEI (15%)</span></label>
     </div>
   </div>
 
-  <!-- Section 7: Tax on Purchasing -->
-  <div class="section">
-    <h2>7. Tax on Purchasing</h2>
-    <div class="section-desc">Use tax, vendor validation, 1099 reporting, and import tax handling</div>
-
-    <div class="field">
-      <label class="required">Use Tax Accrual Process</label>
-      <div class="hint">How do you identify and accrue use tax on purchases?</div>
-      <textarea id="s7_usetax" data-export="Use Tax Accrual Process" placeholder="E.g., Manual review, automated scan, third-party tool..."></textarea>
-    </div>
-
-    <div class="field">
-      <label class="required">Vendor Tax Validation</label>
-      <div class="hint">How do you validate vendor tax exemption status and 1099 requirements?</div>
-      <div class="radio-group">
-        <label><input type="radio" name="s7_validation" value="manual"> <span>Manual Review</span></label>
-        <label><input type="radio" name="s7_validation" value="automated"> <span>Automated Check</span></label>
-        <label><input type="radio" name="s7_validation" value="none"> <span>No Validation</span></label>
-      </div>
-    </div>
-
-    <div class="field">
-      <label class="required">1099 Reporting Requirements</label>
-      <div class="hint">Which vendors require 1099 tracking and reporting?</div>
-      <textarea id="s7_1099" data-export="1099 Reporting" placeholder="E.g., All vendors >$600, contractors, freelancers..."></textarea>
-    </div>
-
-    <div class="field">
-      <label>Import & Customs Duty Handling</label>
-      <div class="hint">Do you import products? How are customs duties and tariffs handled?</div>
-      <textarea id="s7_imports" data-export="Import Customs Duties" placeholder="E.g., Auto-calculated on PO, vendor-supplied costs..."></textarea>
-    </div>
-
-    <div class="field">
-      <label>Intercompany Purchase Tax</label>
-      <div class="hint">How are intercompany purchases taxed across entities?</div>
-      <input type="text" id="s7_intercompany" data-export="Intercompany Purchase Tax" placeholder="E.g., Tax-exempt between entities, transfer pricing applied...">
+  <div class="field">
+    <label>Provinces with PST (Provincial Sales Tax)</label>
+    <div class="hint">BC 7%, SK 6%, MB 7%, AB 0%, QC separate</div>
+    <div class="checkbox-group">
+      <label><input type="checkbox" name="s3_pst" value="BC"> <span>BC (7%)</span></label>
+      <label><input type="checkbox" name="s3_pst" value="SK"> <span>Saskatchewan (6%)</span></label>
+      <label><input type="checkbox" name="s3_pst" value="MB"> <span>Manitoba (7%)</span></label>
+      <label><input type="checkbox" name="s3_pst" value="AB"> <span>Alberta (0%)</span></label>
     </div>
   </div>
 
-  <!-- Section 8: Tax Reporting & Filing -->
-  <div class="section">
-    <h2>8. Tax Reporting & Filing</h2>
-    <div class="section-desc">Tax return preparation, filing procedures, and audit trails</div>
-
-    <div class="field">
-      <label class="required">Return Filing Frequency</label>
-      <div class="hint">Filing frequency by jurisdiction</div>
-      <textarea id="s8_frequency" data-export="Return Filing Frequency" placeholder="E.g., CA & NY (monthly), TX (quarterly), Federal (annually)..."></textarea>
-    </div>
-
-    <div class="field">
-      <label class="required">Tax Liability Reporting</label>
-      <div class="hint">How do you calculate and report tax liability?</div>
-      <div class="radio-group">
-        <label><input type="radio" name="s8_liability" value="accrual"> <span>Accrual Basis</span></label>
-        <label><input type="radio" name="s8_liability" value="cash"> <span>Cash Basis</span></label>
-        <label><input type="radio" name="s8_liability" value="both"> <span>Both</span></label>
-      </div>
-    </div>
-
-    <div class="field">
-      <label class="required">Tax Audit Trail Requirements</label>
-      <div class="hint">What audit trail details must be captured for tax reports?</div>
-      <textarea id="s8_audit" data-export="Tax Audit Trail" placeholder="E.g., Transaction detail, rate applied, exemption status, customer location..."></textarea>
-    </div>
-
-    <div class="field">
-      <label>E-Filing Capabilities</label>
-      <div class="hint">How many jurisdictions support or require e-filing?</div>
-      <input type="text" id="s8_efiling" data-export="E-Filing Jurisdictions" placeholder="E.g., 15 of 20 jurisdictions...">
-    </div>
-
-    <div class="field">
-      <label>Tax Return Sign-Off Process</label>
-      <div class="hint">Who reviews and approves tax returns before filing?</div>
-      <textarea id="s8_signoff" data-export="Tax Return Sign-Off" placeholder="E.g., CFO, Tax Manager, External CPA, Combination..."></textarea>
+  <div class="field">
+    <label>Quebec QST (Québec Sales Tax - 9.975%)</label>
+    <div class="hint">Applies if you have operations or sales in Quebec</div>
+    <div class="radio-group">
+      <label><input type="radio" name="s3_qst" value="yes"> <span>Yes, Quebec operations</span></label>
+      <label><input type="radio" name="s3_qst" value="no"> <span>No Quebec presence</span></label>
     </div>
   </div>
 
-  <!-- Section 9: Tax Engine Integration -->
-  <div class="section">
-    <h2>9. Tax Engine Integration</h2>
-    <div class="section-desc">Third-party tax engines, real-time calculation, and tax research tools</div>
-
-    <div class="field">
-      <label class="required">Third-Party Tax Engine</label>
-      <div class="hint">Do you use a third-party tax calculation engine?</div>
-      <div class="radio-group">
-        <label><input type="radio" name="s9_engine" value="none"> <span>None - In-House</span></label>
-        <label><input type="radio" name="s9_engine" value="avalara"> <span>Avalara</span></label>
-        <label><input type="radio" name="s9_engine" value="vertex"> <span>Vertex</span></label>
-        <label><input type="radio" name="s9_engine" value="other"> <span>Other</span></label>
-      </div>
-    </div>
-
-    <div class="field">
-      <label class="required">Real-Time Tax Calculation</label>
-      <div class="hint">What transactions require real-time tax calculation?</div>
-      <textarea id="s9_realtime" data-export="Real-Time Tax Calculation" placeholder="E.g., All sales orders, invoices, delivery-based transactions..."></textarea>
-    </div>
-
-    <div class="field">
-      <label class="required">Address Validation</label>
-      <div class="hint">How is address data validated for tax accuracy?</div>
-      <div class="radio-group">
-        <label><input type="radio" name="s9_address" value="manual"> <span>Manual Review</span></label>
-        <label><input type="radio" name="s9_address" value="automated"> <span>Automated Service</span></label>
-        <label><input type="radio" name="s9_address" value="none"> <span>No Validation</span></label>
-      </div>
-    </div>
-
-    <div class="field">
-      <label>Taxability Database</label>
-      <div class="hint">Do you maintain or subscribe to a taxability database?</div>
-      <textarea id="s9_taxdb" data-export="Taxability Database" placeholder="E.g., Avalara, third-party lookup, internal matrix..."></textarea>
-    </div>
-
-    <div class="field">
-      <label>Integration Frequency</label>
-      <div class="hint">How often does NetSuite sync with the tax engine?</div>
-      <input type="text" id="s9_sync" data-export="Tax Engine Sync Frequency" placeholder="E.g., Real-time, Daily batch, Weekly...">
+  <div class="field">
+    <label>Input Tax Credit (ITC) Tracking</label>
+    <div class="hint">Do you claim ITCs on GST/HST paid on business inputs?</div>
+    <div class="radio-group">
+      <label><input type="radio" name="s3_itc" value="yes-full"> <span>Yes, full tracking</span></label>
+      <label><input type="radio" name="s3_itc" value="yes-partial"> <span>Yes, partial (some non-recoverable)</span></label>
+      <label><input type="radio" name="s3_itc" value="no"> <span>No or minimal ITCs</span></label>
     </div>
   </div>
+
+  <div class="field">
+    <label>Place of Supply & Cross-Border Rules</label>
+    <div class="hint">How do you handle sales to US customers, intraprovincial, interprovincial?</div>
+    <textarea data-export="Place of Supply Rules" placeholder="e.g., Export sales to US (zero-rated), mostly domestic Ontario sales, some BC/AB resellers"></textarea>
+  </div>
+</div>
+
+<!-- SECTION 4: Tax Rate Management -->
+<div class="section">
+  <h2>4. Tax Rate Management</h2>
+  <p class="section-desc">Tax rate updates, combined rates, effective dating, and system maintenance strategies.</p>
+
+  <div class="field">
+    <label class="required">Combined US Tax Rate Handling</label>
+    <div class="hint">State + county + city + special district rates</div>
+    <div class="radio-group">
+      <label><input type="radio" name="s4_combined" value="single"> <span>Single combined rate per location</span></label>
+      <label><input type="radio" name="s4_combined" value="itemized"> <span>Itemized by component (state, county, city)</span></label>
+      <label><input type="radio" name="s4_combined" value="flex"> <span>Flexible depending on tax code</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Tax Rate Update Process</label>
+    <div class="radio-group">
+      <label><input type="radio" name="s4_updates" value="automated"> <span>Automated (via tax engine/API)</span></label>
+      <label><input type="radio" name="s4_updates" value="manual"> <span>Manual quarterly/annual update</span></label>
+      <label><input type="radio" name="s4_updates" value="hybrid"> <span>Hybrid (auto for some, manual for others)</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>How Frequently Rates Change</label>
+    <div class="hint">Estimate for your primary jurisdictions</div>
+    <input type="text" data-export="Rate Change Frequency" placeholder="e.g., CA quarterly, TX 1-2x/year, ON annual, BC as needed">
+  </div>
+
+  <div class="field">
+    <label>Effective Date Management</label>
+    <div class="hint">How do you handle rate effective dates (retroactive, go-forward)?</div>
+    <textarea data-export="Effective Date Strategy" placeholder="e.g., Implement Jan 1, July 1; some states mid-year changes; all future-dated"></textarea>
+  </div>
+
+  <div class="field">
+    <label>Rate Override Requirements</label>
+    <div class="hint">Do you need to override system-calculated rates for special cases?</div>
+    <div class="radio-group">
+      <label><input type="radio" name="s4_overrides" value="yes"> <span>Yes, frequent overrides</span></label>
+      <label><input type="radio" name="s4_overrides" value="occasional"> <span>Occasional (exceptions only)</span></label>
+      <label><input type="radio" name="s4_overrides" value="no"> <span>No overrides needed</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Canadian Combined Rate Handling</label>
+    <div class="hint">GST + HST + PST/QST combinations</div>
+    <input type="text" data-export="Canadian Rate Combinations" placeholder="e.g., ON: 13% HST; BC: 5% GST + 7% PST; QC: 5% GST + 9.975% QST">
+  </div>
+</div>
+
+<!-- SECTION 5: Tax Exemptions & Certificates -->
+<div class="section">
+  <h2>5. Tax Exemptions & Certificates</h2>
+  <p class="section-desc">Resale certificates, exemption tracking, and special customer categories (government, nonprofits, First Nations).</p>
+
+  <div class="field">
+    <label class="required">US Resale Certificate Management</label>
+    <div class="hint">How many states require resale certificates for your customers?</div>
+    <div class="radio-group">
+      <label><input type="radio" name="s5_resale" value="comprehensive"> <span>Comprehensive tracking across all states</span></label>
+      <label><input type="radio" name="s5_resale" value="major"> <span>Major states only (CA, TX, NY, etc.)</span></label>
+      <label><input type="radio" name="s5_resale" value="minimal"> <span>Minimal/no resale certificate tracking</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Exemption Certificate Types Tracked</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" name="s5_exempt_types" value="resale"> <span>Resale certificates</span></label>
+      <label><input type="checkbox" name="s5_exempt_types" value="nonprofit"> <span>Nonprofit/charitable</span></label>
+      <label><input type="checkbox" name="s5_exempt_types" value="government"> <span>Government entities</span></label>
+      <label><input type="checkbox" name="s5_exempt_types" value="medical"> <span>Medical/healthcare</span></label>
+      <label><input type="checkbox" name="s5_exempt_types" value="other"> <span>Other state-specific exemptions</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Certificate Expiration Tracking</label>
+    <div class="hint">How do you manage expiration dates and renewals?</div>
+    <div class="radio-group">
+      <label><input type="radio" name="s5_expiry" value="automated"> <span>Automated alerts and tracking</span></label>
+      <label><input type="radio" name="s5_expiry" value="manual"> <span>Manual spreadsheet/list</span></label>
+      <label><input type="radio" name="s5_expiry" value="no-tracking"> <span>No formal tracking in place</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Canadian Exempt Supplies</label>
+    <div class="hint">Basic groceries, prescription drugs, medical devices typically exempt</div>
+    <input type="text" data-export="Canadian Exempt Supplies" placeholder="e.g., prescription medications (0% GST/HST), medical devices, food products">
+  </div>
+
+  <div class="field">
+    <label>First Nations Exemptions (Canada)</label>
+    <div class="hint">Do you sell to First Nations reserves or treaty rights customers?</div>
+    <div class="radio-group">
+      <label><input type="radio" name="s5_firstnations" value="yes"> <span>Yes, significant exposure</span></label>
+      <label><input type="radio" name="s5_firstnations" value="occasional"> <span>Occasional sales</span></label>
+      <label><input type="radio" name="s5_firstnations" value="no"> <span>No First Nations sales</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Multi-State Exemption Management Notes</label>
+    <div class="hint">Document your exemption policy complexity</div>
+    <textarea data-export="Exemption Management Notes" placeholder="e.g., Certificate on file for 1,500+ customers; auto-exempt government accounts; manual verification for nonprofits; PA requires SSN for exempt IDs"></textarea>
+  </div>
+</div>
+
+<!-- SECTION 6: Tax on Purchasing -->
+<div class="section">
+  <h2>6. Tax on Purchasing</h2>
+  <p class="section-desc">Use tax, vendor compliance, 1099/T4A reporting, imports, and customs duties.</p>
+
+  <div class="field">
+    <label class="required">US Use Tax Self-Assessment</label>
+    <div class="hint">Do you owe use tax on out-of-state purchases?</div>
+    <div class="radio-group">
+      <label><input type="radio" name="s6_usetax" value="yes-tracking"> <span>Yes, actively tracked and filed</span></label>
+      <label><input type="radio" name="s6_usetax" value="yes-manual"> <span>Yes, but calculated manually</span></label>
+      <label><input type="radio" name="s6_usetax" value="no"> <span>No material use tax exposure</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Vendor Tax ID Validation</label>
+    <div class="hint">How do you verify vendor tax compliance (sales tax permit, GST#)?</div>
+    <div class="radio-group">
+      <label><input type="radio" name="s6_vendor" value="automated"> <span>Automated vendor verification</span></label>
+      <label><input type="radio" name="s6_vendor" value="manual"> <span>Manual spot checks</span></label>
+      <label><input type="radio" name="s6_vendor" value="none"> <span>No formal validation</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>1099-NEC/1099-MISC & T4A/T5018 Reporting</label>
+    <div class="hint">Annual tax reporting for US contractors and Canadian service providers</div>
+    <input type="text" data-export="1099/T4A Annual Threshold" placeholder="e.g., US: $600+ (1099-NEC), Canada: $500+ CAD (T4A), mixed vendors ~250 vendors/year">
+  </div>
+
+  <div class="field">
+    <label>Import Duties & Customs Exposure</label>
+    <div class="hint">Do you import goods (CBP tariffs for US, CBSA duties for Canada)?</div>
+    <div class="radio-group">
+      <label><input type="radio" name="s6_imports" value="significant"> <span>Significant import volume</span></label>
+      <label><input type="radio" name="s6_imports" value="occasional"> <span>Occasional/small imports</span></label>
+      <label><input type="radio" name="s6_imports" value="none"> <span>No imports</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Reverse Charge Mechanism (Canada/US)</label>
+    <div class="hint">Do you apply reverse charge for cross-border services?</div>
+    <input type="text" data-export="Reverse Charge Practices" placeholder="e.g., Apply reverse charge on US service imports to Canada; no reverse charge in place">
+  </div>
+
+  <div class="field">
+    <label>Purchasing Tax Compliance Summary</label>
+    <textarea data-export="Purchasing Tax Summary" placeholder="e.g., ~$2M annual purchases from 150 vendors; 40% international (reverse charge); import HTS coding challenge; use tax assessment for 8 states"></textarea>
+  </div>
+</div>
+
+<!-- SECTION 7: Tax Engine Integration -->
+<div class="section">
+  <h2>7. Tax Engine Integration</h2>
+  <p class="section-desc">Tax calculation engine selection, real-time vs batch processing, address validation, and transaction type mapping.</p>
+
+  <div class="field">
+    <label class="required">Current/Desired Tax Calculation Engine</label>
+    <div class="radio-group">
+      <label><input type="radio" name="s7_engine" value="avalara"> <span>Avalara AvaTax</span></label>
+      <label><input type="radio" name="s7_engine" value="vertex"> <span>Vertex</span></label>
+      <label><input type="radio" name="s7_engine" value="thomson"> <span>Thomson Reuters ONESOURCE</span></label>
+      <label><input type="radio" name="s7_engine" value="netsuite"> <span>NetSuite Native Tax</span></label>
+      <label><input type="radio" name="s7_engine" value="other"> <span>Other/TBD</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Real-Time vs Batch Calculation</label>
+    <div class="hint">Does tax calculate instantly on transaction or batch process at end-of-day?</div>
+    <div class="radio-group">
+      <label><input type="radio" name="s7_timing" value="realtime"> <span>Real-time (point of sale)</span></label>
+      <label><input type="radio" name="s7_timing" value="batch"> <span>Batch (end-of-day/period)</span></label>
+      <label><input type="radio" name="s7_timing" value="hybrid"> <span>Hybrid (some real-time, some batch)</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Address Validation & Standardization</label>
+    <div class="hint">USPS validation, Canada Post, or other?</div>
+    <div class="radio-group">
+      <label><input type="radio" name="s7_address" value="usps"> <span>USPS (US only)</span></label>
+      <label><input type="radio" name="s7_address" value="ca-post"> <span>Canada Post</span></label>
+      <label><input type="radio" name="s7_address" value="both"> <span>Both USPS & Canada Post</span></label>
+      <label><input type="radio" name="s7_address" value="none"> <span>Manual or no validation</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Product Taxability Codes</label>
+    <div class="hint">How are products classified for tax (tax codes, product categories)?</div>
+    <input type="text" data-export="Product Taxability Codes" placeholder="e.g., Avalara: 12345 (taxable goods); 00000 (exempt); 54321 (reduced rate); custom mapping in NetSuite">
+  </div>
+
+  <div class="field">
+    <label>Transaction Types Covered</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" name="s7_txn_types" value="sales"> <span>Sales orders/invoices</span></label>
+      <label><input type="checkbox" name="s7_txn_types" value="purchase"> <span>Purchase orders</span></label>
+      <label><input type="checkbox" name="s7_txn_types" value="estimate"> <span>Estimates/quotes</span></label>
+      <label><input type="checkbox" name="s7_txn_types" value="return"> <span>Returns/credits</span></label>
+      <label><input type="checkbox" name="s7_txn_types" value="exemption"> <span>Exemption logic</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Integration Architecture Notes</label>
+    <textarea data-export="Tax Integration Architecture" placeholder="e.g., Avalara API via Netsuite connector; 500 daily API calls budget; fallback to static rates; pending: exemption sync"></textarea>
+  </div>
+</div>
+
+<!-- SECTION 8: Tax Reporting & Filing -->
+<div class="section">
+  <h2>8. Tax Reporting & Filing</h2>
+  <p class="section-desc">Sales tax returns, GST/HST filing, provincial PST returns, annual information returns, and e-filing requirements.</p>
+
+  <div class="field">
+    <label class="required">US Sales Tax Return Filing Approach</label>
+    <div class="hint">Manual filing or e-file/outsourced?</div>
+    <div class="radio-group">
+      <label><input type="radio" name="s8_us_filing" value="outsourced"> <span>Outsourced/e-filed by tax service</span></label>
+      <label><input type="radio" name="s8_us_filing" value="manual"> <span>Manual filing by accounting team</span></label>
+      <label><input type="radio" name="s8_us_filing" value="hybrid"> <span>Mix of outsourced and manual</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Canadian GST/HST Return Filing Method</label>
+    <div class="hint">CRA portal, NETFILE, accountant-filed?</div>
+    <div class="radio-group">
+      <label><input type="radio" name="s8_ca_filing" value="netfile"> <span>NETFILE (CRA e-file)</span></label>
+      <label><input type="radio" name="s8_ca_filing" value="cra-portal"> <span>CRA My Business Account portal</span></label>
+      <label><input type="radio" name="s8_ca_filing" value="accountant"> <span>Accountant/tax service files</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Provincial PST/QST Return Filing</label>
+    <div class="hint">BC, SK, MB, QC returns filed how?</div>
+    <input type="text" data-export="Provincial Return Filing" placeholder="e.g., BC: auto e-filed; SK/MB: quarterly manual; QC: monthly NETFILE">
+  </div>
+
+  <div class="field">
+    <label>Form 1099/1098 & T4A/T5018 Processing</label>
+    <div class="hint">Year-end reporting for contractors, freelancers</div>
+    <div class="radio-group">
+      <label><input type="radio" name="s8_forms" value="automated"> <span>Automated NetSuite export to tax software</span></label>
+      <label><input type="radio" name="s8_forms" value="manual"> <span>Manual spreadsheet compilation</span></label>
+      <label><input type="radio" name="s8_forms" value="accountant"> <span>Accountant prepares forms</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Return Filing Deadlines & Calendar</label>
+    <div class="hint">Document key dates: quarterly, semi-annual, annual for all jurisdictions</div>
+    <textarea data-export="Return Filing Calendar" placeholder="e.g., US: Most quarterly mid-month; NY 20th; CA 25th; Canada: Monthly (1st of month); QC (10th); Annual 1099s due Jan 31"></textarea>
+  </div>
+
+  <div class="field">
+    <label>Audit Trail & Documentation Needs</label>
+    <div class="hint">How detailed must transaction records be for filing support?</div>
+    <input type="text" data-export="Audit Trail Requirements" placeholder="e.g., Full transaction detail by tax code; exemption cert reference; state-specific schedules; multi-year archive for 7 years">
+  </div>
+</div>
+
+<!-- SECTION 9: Intercompany & Cross-Border Tax -->
+<div class="section">
+  <h2>9. Intercompany & Cross-Border Tax</h2>
+  <p class="section-desc">US-Canada cross-border transactions, transfer pricing, USMCA/CUSMA, duties, withholding, and intercompany tax treatment.</p>
+
+  <div class="field">
+    <label class="required">US-Canada Cross-Border Transaction Volume</label>
+    <div class="hint">Estimate annual intercompany or related-party transactions</div>
+    <div class="radio-group">
+      <label><input type="radio" name="s9_crossborder" value="significant"> <span>Significant ($1M+/year)</span></label>
+      <label><input type="radio" name="s9_crossborder" value="moderate"> <span>Moderate ($100K-$1M/year)</span></label>
+      <label><input type="radio" name="s9_crossborder" value="minimal"> <span>Minimal/none</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Transfer Pricing Documentation</label>
+    <div class="hint">Do you maintain transfer pricing policies or documentation?</div>
+    <div class="radio-group">
+      <label><input type="radio" name="s9_tp" value="yes"> <span>Yes, formal transfer pricing documentation</span></label>
+      <label><input type="radio" name="s9_tp" value="informal"> <span>Informal/cost-plus tracking</span></label>
+      <label><input type="radio" name="s9_tp" value="no"> <span>No transfer pricing structure</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>USMCA/CUSMA Preference & Tariff Classification</label>
+    <div class="hint">Do you claim USMCA origin status for trade preferences?</div>
+    <input type="text" data-export="USMCA Tariff Strategy" placeholder="e.g., Claim USMCA on automotive parts (eligible); manual HS code verification; de minimis rule <5% non-USMCA content">
+  </div>
+
+  <div class="field">
+    <label>Customs Duties & De Minimis Thresholds</label>
+    <div class="hint">US: <$800 shipments (de minimis); Canada: <$200 CAD</div>
+    <div class="radio-group">
+      <label><input type="radio" name="s9_deminimis" value="yes"> <span>Actively use de minimis exemptions</span></label>
+      <label><input type="radio" name="s9_deminimis" value="occasional"> <span>Occasional use</span></label>
+      <label><input type="radio" name="s9_deminimis" value="no"> <span>No de minimis strategy</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Withholding Tax on Cross-Border Payments</label>
+    <div class="hint">Do you withhold tax on payments to US or Canadian vendors/services?</div>
+    <input type="text" data-export="Withholding Tax" placeholder="e.g., 15% withholding on US service payments; 25% Canadian resident withholding; no withholding on goods">
+  </div>
+
+  <div class="field">
+    <label>Intercompany Tax Allocation Notes</label>
+    <textarea data-export="Intercompany Tax Allocation" placeholder="e.g., Canadian subsidiary owns IP; US entity pays royalties; Federal + provincial tax allocated based on revenue; consolidation for return filing"></textarea>
+  </div>
+</div>
 
   <!-- Section 10: Additional Notes & Requirements -->
   <div class="section">
