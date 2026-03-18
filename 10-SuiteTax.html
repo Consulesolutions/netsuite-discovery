@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NetSuite Discovery: SuiteTax</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #f0f2f5; color: #1a1a2e; line-height: 1.6; }
+.header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); color: white; padding: 40px 20px; text-align: center; }
+.header h1 { font-size: 28px; margin-bottom: 8px; }
+.header p { opacity: 0.85; font-size: 15px; max-width: 600px; margin: 0 auto; }
+.header-back { text-align: left; padding: 20px 20px 0; }
+.header-back a { color: #4a90d9; text-decoration: none; font-size: 14px; font-weight: 600; }
+.header-back a:hover { text-decoration: underline; }
+.container { max-width: 900px; margin: 30px auto; padding: 0 20px 60px; }
+.meta-section { background: white; border-radius: 12px; padding: 30px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.meta-section h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #0f3460; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #e8ecf1; }
+.section { background: white; border-radius: 12px; padding: 30px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.section h2 { font-size: 20px; color: #0f3460; margin-bottom: 6px; }
+.section .section-desc { color: #666; font-size: 14px; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 2px solid #e8ecf1; }
+.field { margin-bottom: 20px; }
+.field label { display: block; font-weight: 600; font-size: 14px; margin-bottom: 6px; color: #333; }
+.field .hint { font-size: 12px; color: #888; margin-bottom: 6px; font-style: italic; }
+.field input[type="text"], .field input[type="number"], .field input[type="date"], .field select, .field textarea {
+  width: 100%; padding: 10px 14px; border: 1.5px solid #d1d5db; border-radius: 8px; font-size: 14px; font-family: inherit; transition: border-color 0.2s; background: #fafbfc;
+}
+.field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: #0f3460; background: white; box-shadow: 0 0 0 3px rgba(15,52,96,0.08); }
+.field textarea { min-height: 80px; resize: vertical; }
+.radio-group, .checkbox-group { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 6px; }
+.radio-group label, .checkbox-group label { font-weight: 400; display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 6px 14px; border: 1.5px solid #d1d5db; border-radius: 8px; font-size: 14px; transition: all 0.2s; background: #fafbfc; }
+.radio-group label:hover, .checkbox-group label:hover { border-color: #0f3460; background: #f0f4ff; }
+.radio-group input:checked + span, .checkbox-group input:checked + span { color: #0f3460; font-weight: 600; }
+.radio-group label:has(input:checked), .checkbox-group label:has(input:checked) { border-color: #0f3460; background: #eef2ff; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 600px) { .grid-2 { grid-template-columns: 1fr; } }
+.btn-bar { position: sticky; bottom: 0; background: white; padding: 16px 20px; border-top: 1px solid #e5e7eb; display: flex; justify-content: center; gap: 12px; z-index: 10; }
+.btn { padding: 12px 32px; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+.btn-primary { background: #0f3460; color: white; }
+.btn-primary:hover { background: #1a4a7a; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(15,52,96,0.3); }
+.btn-secondary { background: #e8ecf1; color: #0f3460; }
+.btn-drive { background: #1a73e8; color: white; display: flex; align-items: center; gap: 8px; }
+.btn-drive:hover { background: #1557b0; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(26,115,232,0.3); }
+.btn-drive:disabled { background: #93c5fd; cursor: wait; }
+.drive-icon { font-size: 18px; }
+.btn-secondary:hover { background: #d1d8e4; }
+.required::after { content: ' *'; color: #e53e3e; }
+.progress-bar { background: #e8ecf1; height: 6px; border-radius: 3px; margin: 20px 0; overflow: hidden; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, #0f3460, #4a90d9); border-radius: 3px; transition: width 0.5s ease; }
+.progress-text { text-align: center; font-size: 13px; color: #666; margin-bottom: 10px; }
+.toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: #10b981; color: white; padding: 12px 24px; border-radius: 8px; font-weight: 600; z-index: 100; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+</style>
+<script src="drive-upload.js"></script>
+<script src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
+<script src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
+</head>
+<body>
+<div class="header-back">
+  <a href="index.html">← Back to Index</a>
+</div>
+<div class="header">
+  <h1>NetSuite ERP Discovery: SuiteTax</h1>
+  <p>Comprehensive tax compliance assessment and configuration discovery for NetSuite implementations</p>
+</div>
+
+<div class="container">
+  <div class="meta-section">
+    <h2>Session Information</h2>
+    <div class="grid-2">
+      <div class="field">
+        <label class="required">Company Name</label>
+        <input type="text" id="session_company" data-export="Company Name" placeholder="Enter company name">
+      </div>
+      <div class="field">
+        <label class="required">Assessment Date</label>
+        <input type="date" id="session_date" data-export="Assessment Date">
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="field">
+        <label class="required">Interviewer Name</label>
+        <input type="text" id="session_interviewer" data-export="Interviewer Name" placeholder="Your name">
+      </div>
+      <div class="field">
+        <label>Contact Email</label>
+        <input type="text" id="session_email" data-export="Contact Email" placeholder="email@company.com">
+      </div>
+    </div>
+  </div>
+
+  <div class="progress-text">Assessment Progress: <strong id="progress-percent">0</strong>%</div>
+  <div class="progress-bar">
+    <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+  </div>
+
+  <!-- Section 1: Tax Compliance Overview -->
+  <div class="section">
+    <h2>1. Tax Compliance Overview</h2>
+    <div class="section-desc">Document current tax landscape, compliance obligations, and existing tax systems</div>
+
+    <div class="field">
+      <label class="required">Tax Jurisdictions</label>
+      <div class="hint">List all states/countries where your company is tax registered or has tax obligations</div>
+      <textarea id="s1_jurisdictions" data-export="Tax Jurisdictions" placeholder="E.g., CA, NY, TX, UK, Canada..."></textarea>
+    </div>
+
+    <div class="field">
+      <label class="required">Tax Types</label>
+      <div class="hint">Select all applicable tax types</div>
+      <div class="checkbox-group">
+        <label><input type="checkbox" name="s1_tax_types" value="sales-tax"> <span>Sales Tax</span></label>
+        <label><input type="checkbox" name="s1_tax_types" value="use-tax"> <span>Use Tax</span></label>
+        <label><input type="checkbox" name="s1_tax_types" value="vat"> <span>VAT</span></label>
+        <label><input type="checkbox" name="s1_tax_types" value="gst"> <span>GST</span></label>
+        <label><input type="checkbox" name="s1_tax_types" value="withholding"> <span>Withholding Tax</span></label>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="required">Current Tax Engine/System</label>
+      <div class="hint">What system currently handles tax calculations?</div>
+      <input type="text" id="s1_engine" data-export="Current Tax Engine" placeholder="E.g., Manual calculations, Avalara, Vertex, Legacy system...">
+    </div>
+
+    <div class="field">
+      <label class="required">Compliance Filing Frequency</label>
+      <div class="hint">How often must you file tax returns?</div>
+      <div class="radio-group">
+        <label><input type="radio" name="s1_filing" value="monthly"> <span>Monthly</span></label>
+        <label><input type="radio" name="s1_filing" value="quarterly"> <span>Quarterly</span></label>
+        <label><input type="radio" name="s1_filing" value="annually"> <span>Annually</span></label>
+        <label><input type="radio" name="s1_filing" value="variable"> <span>Variable</span></label>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Number of Tax Jurisdictions with Active Compliance</label>
+      <input type="number" id="s1_count" data-export="Active Tax Jurisdictions Count" placeholder="0">
+    </div>
+  </div>
+
+  <!-- Section 2: Nexus & Tax Registration -->
+  <div class="section">
+    <h2>2. Nexus & Tax Registration</h2>
+    <div class="section-desc">Understand nexus establishment and tax registration requirements across jurisdictions</div>
+
+    <div class="field">
+      <label class="required">Nexus States/Countries</label>
+      <div class="hint">List all states/countries where you have tax nexus (physical, economic, or marketplace)</div>
+      <textarea id="s2_nexus" data-export="Nexus States/Countries" placeholder="E.g., CA (physical), NY (economic), TX (marketplace)..."></textarea>
+    </div>
+
+    <div class="field">
+      <label class="required">Tax Registration Numbers</label>
+      <div class="hint">Do you have tax registration numbers (VATIN, GST numbers) for key jurisdictions?</div>
+      <div class="radio-group">
+        <label><input type="radio" name="s2_registration" value="yes"> <span>Yes - Comprehensive</span></label>
+        <label><input type="radio" name="s2_registration" value="partial"> <span>Yes - Partial</span></label>
+        <label><input type="radio" name="s2_registration" value="no"> <span>No</span></label>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Economic Nexus Thresholds</label>
+      <div class="hint">Do you track economic nexus thresholds by jurisdiction?</div>
+      <textarea id="s2_thresholds" data-export="Economic Nexus Thresholds" placeholder="E.g., CA: $600K revenue, NY: $100K transactions..."></textarea>
+    </div>
+
+    <div class="field">
+      <label class="required">Marketplace Facilitator Obligations</label>
+      <div class="hint">Do you sell through online marketplaces? Which ones? Does the marketplace handle tax?</div>
+      <textarea id="s2_marketplace" data-export="Marketplace Facilitator Obligations" placeholder="E.g., Amazon (platform handles), eBay, Shopify..."></textarea>
+    </div>
+
+    <div class="field">
+      <label>Nexus Review Frequency</label>
+      <div class="hint">How often is nexus reviewed for new jurisdictions?</div>
+      <input type="text" id="s2_review" data-export="Nexus Review Frequency" placeholder="E.g., Quarterly, Annually, Ad-hoc...">
+    </div>
+  </div>
+
+  <!-- Section 3: Sales & Use Tax Configuration -->
+  <div class="section">
+    <h2>3. Sales & Use Tax Configuration</h2>
+    <div class="section-desc">Detailed configuration of taxability rules, tax codes, and exemption management</div>
+
+    <div class="field">
+      <label class="required">Taxability Rules Complexity</label>
+      <div class="hint">How complex are your taxability rules by item/service?</div>
+      <div class="radio-group">
+        <label><input type="radio" name="s3_complexity" value="simple"> <span>Simple (one rate)</span></label>
+        <label><input type="radio" name="s3_complexity" value="moderate"> <span>Moderate (variable)</span></label>
+        <label><input type="radio" name="s3_complexity" value="complex"> <span>Complex (multiple factors)</span></label>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="required">Tax Codes in Use</label>
+      <div class="hint">Approximate number of unique tax codes configured</div>
+      <input type="number" id="s3_taxcodes" data-export="Number of Tax Codes" placeholder="0">
+    </div>
+
+    <div class="field">
+      <label class="required">Item-Level Taxability Matrix</label>
+      <div class="hint">How are items classified for tax purposes?</div>
+      <textarea id="s3_matrix" data-export="Item Taxability Matrix" placeholder="E.g., Physical goods (taxable), Services (jurisdiction-specific), Shipping (varies)..."></textarea>
+    </div>
+
+    <div class="field">
+      <label class="required">Tax Schedules & Effective Dates</label>
+      <div class="hint">Are tax schedules defined with effective dates? Any seasonal variations?</div>
+      <textarea id="s3_schedules" data-export="Tax Schedules" placeholder="E.g., Standard (effective 01/01), Holiday period variations..."></textarea>
+    </div>
+
+    <div class="field">
+      <label>Exemption Certificate Management</label>
+      <div class="hint">How do you currently manage resale/exemption certificates?</div>
+      <textarea id="s3_exemption" data-export="Exemption Certificate Management" placeholder="E.g., Digital storage, linked to customer, expiration tracking..."></textarea>
+    </div>
+
+    <div class="field">
+      <label>Current Taxability Research Process</label>
+      <div class="hint">How do you handle taxability questions for new products or jurisdictions?</div>
+      <input type="text" id="s3_research" data-export="Taxability Research Process" placeholder="E.g., Manual review, third-party lookup, legal counsel...">
+    </div>
+  </div>
+
+  <!-- Section 4: Tax Rate Management -->
+  <div class="section">
+    <h2>4. Tax Rate Management</h2>
+    <div class="section-desc">Track tax rate sources, tables, combined rates, and rate override procedures</div>
+
+    <div class="field">
+      <label class="required">Tax Rate Source</label>
+      <div class="hint">How are tax rates populated and maintained?</div>
+      <div class="radio-group">
+        <label><input type="radio" name="s4_source" value="manual"> <span>Manual Entry</span></label>
+        <label><input type="radio" name="s4_source" value="automated"> <span>Automated Feed</span></label>
+        <label><input type="radio" name="s4_source" value="hybrid"> <span>Hybrid</span></label>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="required">Combined Rate Handling</label>
+      <div class="hint">How are state, county, city, and special district rates combined?</div>
+      <textarea id="s4_combined" data-export="Combined Rate Handling" placeholder="E.g., Additive (7% + 0.5% + 0.25%), jurisdiction-specific formulas..."></textarea>
+    </div>
+
+    <div class="field">
+      <label class="required">Rate Update Frequency</label>
+      <div class="hint">How often are tax rates reviewed and updated?</div>
+      <input type="text" id="s4_frequency" data-export="Rate Update Frequency" placeholder="E.g., Monthly, Quarterly, Event-driven...">
+    </div>
+
+    <div class="field">
+      <label>Rate Effective Date Management</label>
+      <div class="hint">How do you handle effective dates for rate changes?</div>
+      <textarea id="s4_effective" data-export="Rate Effective Date Management" placeholder="E.g., Retroactive updates, forward-dated changes..."></textarea>
+    </div>
+
+    <div class="field">
+      <label>Rate Overrides & Exceptions</label>
+      <div class="hint">Are there customer-specific or order-specific rate overrides?</div>
+      <textarea id="s4_overrides" data-export="Rate Overrides" placeholder="E.g., Wholesale customer rates, promotional rates..."></textarea>
+    </div>
+  </div>
+
+  <!-- Section 5: Tax Exemptions & Certificates -->
+  <div class="section">
+    <h2>5. Tax Exemptions & Certificates</h2>
+    <div class="section-desc">Manage exempt customer types, certificates, and expiration tracking</div>
+
+    <div class="field">
+      <label class="required">Exempt Customer Types</label>
+      <div class="hint">Select all applicable exempt customer types</div>
+      <div class="checkbox-group">
+        <label><input type="checkbox" name="s5_exempt" value="reseller"> <span>Resellers</span></label>
+        <label><input type="checkbox" name="s5_exempt" value="government"> <span>Government</span></label>
+        <label><input type="checkbox" name="s5_exempt" value="nonprofit"> <span>Non-Profit</span></label>
+        <label><input type="checkbox" name="s5_exempt" value="other"> <span>Other</span></label>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="required">Certificate Storage & Tracking</label>
+      <div class="hint">How are exemption certificates stored and linked to customers?</div>
+      <textarea id="s5_storage" data-export="Certificate Storage" placeholder="E.g., NetSuite attachments, cloud storage, third-party system..."></textarea>
+    </div>
+
+    <div class="field">
+      <label class="required">Certificate Expiration Tracking</label>
+      <div class="hint">Do you track and alert on expiring exemption certificates?</div>
+      <div class="radio-group">
+        <label><input type="radio" name="s5_expiration" value="yes"> <span>Yes - Automated</span></label>
+        <label><input type="radio" name="s5_expiration" value="manual"> <span>Yes - Manual</span></label>
+        <label><input type="radio" name="s5_expiration" value="no"> <span>No</span></label>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Resale Certificate Details</label>
+      <div class="hint">How are resale certificates identified and validated?</div>
+      <textarea id="s5_resale" data-export="Resale Certificate Details" placeholder="E.g., By certificate number, customer state registration..."></textarea>
+    </div>
+
+    <div class="field">
+      <label>Government Exemption Tracking</label>
+      <div class="hint">How do you identify and track government customer exemptions?</div>
+      <input type="text" id="s5_government" data-export="Government Exemption Tracking" placeholder="E.g., Customer class flag, customer type field...">
+    </div>
+  </div>
+
+  <!-- Section 6: International Tax / VAT / GST -->
+  <div class="section">
+    <h2>6. International Tax / VAT / GST</h2>
+    <div class="section-desc">Cross-border, VAT, and GST compliance requirements</div>
+
+    <div class="field">
+      <label>VAT Registration Numbers</label>
+      <div class="hint">List company VAT/VATIN numbers by country</div>
+      <textarea id="s6_vat" data-export="VAT Registration Numbers" placeholder="E.g., UK: GB123456789, DE: DE987654321..."></textarea>
+    </div>
+
+    <div class="field">
+      <label class="required">VAT Reverse Charge Rules</label>
+      <div class="hint">Which transaction types qualify for reverse charge?</div>
+      <textarea id="s6_reverse" data-export="VAT Reverse Charge Rules" placeholder="E.g., B2B services to EU, specific categories..."></textarea>
+    </div>
+
+    <div class="field">
+      <label>Intrastat Reporting Requirements</label>
+      <div class="hint">Do you need to file intrastat reports? For which countries?</div>
+      <textarea id="s6_intrastat" data-export="Intrastat Reporting" placeholder="E.g., EU trade reporting for goods shipments..."></textarea>
+    </div>
+
+    <div class="field">
+      <label class="required">Place of Supply Rules</label>
+      <div class="hint">How do you determine place of supply for VAT purposes?</div>
+      <textarea id="s6_supply" data-export="Place of Supply Rules" placeholder="E.g., Customer location for B2C, supplier location for B2B services..."></textarea>
+    </div>
+
+    <div class="field">
+      <label>Withholding Tax Requirements</label>
+      <div class="hint">Which jurisdictions require withholding tax on payments?</div>
+      <textarea id="s6_withholding" data-export="Withholding Tax Requirements" placeholder="E.g., India (10% on services), Mexico (35% on consulting)..."></textarea>
+    </div>
+
+    <div class="field">
+      <label>Tax Reporting by Country</label>
+      <div class="hint">List countries with separate tax reporting requirements</div>
+      <input type="text" id="s6_countries" data-export="Tax Reporting Countries" placeholder="E.g., UK, Germany, Canada, Australia...">
+    </div>
+  </div>
+
+  <!-- Section 7: Tax on Purchasing -->
+  <div class="section">
+    <h2>7. Tax on Purchasing</h2>
+    <div class="section-desc">Use tax, vendor validation, 1099 reporting, and import tax handling</div>
+
+    <div class="field">
+      <label class="required">Use Tax Accrual Process</label>
+      <div class="hint">How do you identify and accrue use tax on purchases?</div>
+      <textarea id="s7_usetax" data-export="Use Tax Accrual Process" placeholder="E.g., Manual review, automated scan, third-party tool..."></textarea>
+    </div>
+
+    <div class="field">
+      <label class="required">Vendor Tax Validation</label>
+      <div class="hint">How do you validate vendor tax exemption status and 1099 requirements?</div>
+      <div class="radio-group">
+        <label><input type="radio" name="s7_validation" value="manual"> <span>Manual Review</span></label>
+        <label><input type="radio" name="s7_validation" value="automated"> <span>Automated Check</span></label>
+        <label><input type="radio" name="s7_validation" value="none"> <span>No Validation</span></label>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="required">1099 Reporting Requirements</label>
+      <div class="hint">Which vendors require 1099 tracking and reporting?</div>
+      <textarea id="s7_1099" data-export="1099 Reporting" placeholder="E.g., All vendors >$600, contractors, freelancers..."></textarea>
+    </div>
+
+    <div class="field">
+      <label>Import & Customs Duty Handling</label>
+      <div class="hint">Do you import products? How are customs duties and tariffs handled?</div>
+      <textarea id="s7_imports" data-export="Import Customs Duties" placeholder="E.g., Auto-calculated on PO, vendor-supplied costs..."></textarea>
+    </div>
+
+    <div class="field">
+      <label>Intercompany Purchase Tax</label>
+      <div class="hint">How are intercompany purchases taxed across entities?</div>
+      <input type="text" id="s7_intercompany" data-export="Intercompany Purchase Tax" placeholder="E.g., Tax-exempt between entities, transfer pricing applied...">
+    </div>
+  </div>
+
+  <!-- Section 8: Tax Reporting & Filing -->
+  <div class="section">
+    <h2>8. Tax Reporting & Filing</h2>
+    <div class="section-desc">Tax return preparation, filing procedures, and audit trails</div>
+
+    <div class="field">
+      <label class="required">Return Filing Frequency</label>
+      <div class="hint">Filing frequency by jurisdiction</div>
+      <textarea id="s8_frequency" data-export="Return Filing Frequency" placeholder="E.g., CA & NY (monthly), TX (quarterly), Federal (annually)..."></textarea>
+    </div>
+
+    <div class="field">
+      <label class="required">Tax Liability Reporting</label>
+      <div class="hint">How do you calculate and report tax liability?</div>
+      <div class="radio-group">
+        <label><input type="radio" name="s8_liability" value="accrual"> <span>Accrual Basis</span></label>
+        <label><input type="radio" name="s8_liability" value="cash"> <span>Cash Basis</span></label>
+        <label><input type="radio" name="s8_liability" value="both"> <span>Both</span></label>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="required">Tax Audit Trail Requirements</label>
+      <div class="hint">What audit trail details must be captured for tax reports?</div>
+      <textarea id="s8_audit" data-export="Tax Audit Trail" placeholder="E.g., Transaction detail, rate applied, exemption status, customer location..."></textarea>
+    </div>
+
+    <div class="field">
+      <label>E-Filing Capabilities</label>
+      <div class="hint">How many jurisdictions support or require e-filing?</div>
+      <input type="text" id="s8_efiling" data-export="E-Filing Jurisdictions" placeholder="E.g., 15 of 20 jurisdictions...">
+    </div>
+
+    <div class="field">
+      <label>Tax Return Sign-Off Process</label>
+      <div class="hint">Who reviews and approves tax returns before filing?</div>
+      <textarea id="s8_signoff" data-export="Tax Return Sign-Off" placeholder="E.g., CFO, Tax Manager, External CPA, Combination..."></textarea>
+    </div>
+  </div>
+
+  <!-- Section 9: Tax Engine Integration -->
+  <div class="section">
+    <h2>9. Tax Engine Integration</h2>
+    <div class="section-desc">Third-party tax engines, real-time calculation, and tax research tools</div>
+
+    <div class="field">
+      <label class="required">Third-Party Tax Engine</label>
+      <div class="hint">Do you use a third-party tax calculation engine?</div>
+      <div class="radio-group">
+        <label><input type="radio" name="s9_engine" value="none"> <span>None - In-House</span></label>
+        <label><input type="radio" name="s9_engine" value="avalara"> <span>Avalara</span></label>
+        <label><input type="radio" name="s9_engine" value="vertex"> <span>Vertex</span></label>
+        <label><input type="radio" name="s9_engine" value="other"> <span>Other</span></label>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="required">Real-Time Tax Calculation</label>
+      <div class="hint">What transactions require real-time tax calculation?</div>
+      <textarea id="s9_realtime" data-export="Real-Time Tax Calculation" placeholder="E.g., All sales orders, invoices, delivery-based transactions..."></textarea>
+    </div>
+
+    <div class="field">
+      <label class="required">Address Validation</label>
+      <div class="hint">How is address data validated for tax accuracy?</div>
+      <div class="radio-group">
+        <label><input type="radio" name="s9_address" value="manual"> <span>Manual Review</span></label>
+        <label><input type="radio" name="s9_address" value="automated"> <span>Automated Service</span></label>
+        <label><input type="radio" name="s9_address" value="none"> <span>No Validation</span></label>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Taxability Database</label>
+      <div class="hint">Do you maintain or subscribe to a taxability database?</div>
+      <textarea id="s9_taxdb" data-export="Taxability Database" placeholder="E.g., Avalara, third-party lookup, internal matrix..."></textarea>
+    </div>
+
+    <div class="field">
+      <label>Integration Frequency</label>
+      <div class="hint">How often does NetSuite sync with the tax engine?</div>
+      <input type="text" id="s9_sync" data-export="Tax Engine Sync Frequency" placeholder="E.g., Real-time, Daily batch, Weekly...">
+    </div>
+  </div>
+
+  <!-- Section 10: Additional Notes & Requirements -->
+  <div class="section">
+    <h2>10. Additional Notes & Requirements</h2>
+    <div class="section-desc">Capture special scenarios, pain points, and migration considerations</div>
+
+    <div class="field">
+      <label>Current Pain Points</label>
+      <div class="hint">What are the biggest challenges with your current tax process?</div>
+      <textarea id="s10_painpoints" data-export="Current Pain Points" placeholder="E.g., Manual rate updates, certificate tracking, multi-jurisdiction complexity..."></textarea>
+    </div>
+
+    <div class="field">
+      <label>Migration & Data Requirements</label>
+      <div class="hint">What data must be migrated from the legacy system?</div>
+      <textarea id="s10_migration" data-export="Migration Requirements" placeholder="E.g., Historical rates, customer exemption certificates, jurisdiction config..."></textarea>
+    </div>
+
+    <div class="field">
+      <label>Special Tax Scenarios</label>
+      <div class="hint">Any unique or complex tax scenarios not covered above?</div>
+      <textarea id="s10_scenarios" data-export="Special Scenarios" placeholder="E.g., Digital goods, drop-shipping, affiliate programs..."></textarea>
+    </div>
+
+    <div class="field">
+      <label>User Roles & Permissions</label>
+      <div class="hint">Who needs access to tax configuration and reporting?</div>
+      <textarea id="s10_roles" data-export="User Roles & Permissions" placeholder="E.g., Finance Manager (full access), Sales (read-only), CFO (approval)..."></textarea>
+    </div>
+
+    <div class="field">
+      <label>Implementation Timeline & Priorities</label>
+      <div class="hint">What are your priorities and timeline for tax module implementation?</div>
+      <textarea id="s10_timeline" data-export="Implementation Timeline" placeholder="E.g., 3-month phased approach: Phase 1 (core sales tax), Phase 2 (VAT)..."></textarea>
+    </div>
+
+    <div class="field">
+      <label>Additional Notes</label>
+      <div class="hint">Any additional information relevant to your tax discovery?</div>
+      <textarea id="s10_notes" data-export="Additional Notes" placeholder="Comments, concerns, or follow-up items..."></textarea>
+    </div>
+  </div>
+
+</div>
+
+<div class="btn-bar">
+  <button class="btn btn-secondary" onclick="clearForm()">Clear Form</button>
+  <button class="btn btn-primary" onclick="exportToExcel()">Export to Excel</button>
+  <button class="btn btn-drive" id="driveBtn" onclick="saveToGoogleDrive()">
+    <span class="drive-icon">📁</span> Save to Google Drive
+  </button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const TOTAL_FIELDS = document.querySelectorAll('[data-export]').length;
+
+function updateProgress() {
+  let filledCount = 0;
+  document.querySelectorAll('[data-export]').forEach(field => {
+    if (field.type === 'checkbox' || field.type === 'radio') {
+      if (field.checked) filledCount++;
+    } else if (field.value && field.value.trim()) {
+      filledCount++;
+    }
+  });
+
+  const percent = Math.round((filledCount / TOTAL_FIELDS) * 100);
+  document.getElementById('progress-fill').style.width = percent + '%';
+  document.getElementById('progress-percent').textContent = percent;
+}
+
+function clearForm() {
+  if (confirm('Are you sure you want to clear all form data? This cannot be undone.')) {
+    document.querySelectorAll('[data-export]').forEach(field => {
+      if (field.type === 'checkbox' || field.type === 'radio') {
+        field.checked = false;
+      } else {
+        field.value = '';
+      }
+    });
+    updateProgress();
+    showToast('Form cleared');
+  }
+}
+
+function exportToExcel() {
+  const wb = XLSX.utils.book_new();
+  const data = [];
+
+  // Header row
+  data.push(['Field', 'Value']);
+
+  // Collect all fields
+  document.querySelectorAll('[data-export]').forEach(field => {
+    const label = field.getAttribute('data-export');
+    let value = '';
+
+    if (field.type === 'checkbox' || field.type === 'radio') {
+      if (field.checked) value = field.value;
+    } else {
+      value = field.value;
+    }
+
+    if (value) {
+      data.push([label, value]);
+    }
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(data);
+  ws['!cols'] = [{wch: 30}, {wch: 50}];
+  XLSX.utils.book_append_sheet(wb, ws, 'SuiteTax');
+
+  const fileName = `SuiteTax_${new Date().toISOString().split('T')[0]}.xlsx`;
+  XLSX.writeFile(wb, fileName);
+  showToast('Exported to Excel');
+}
+
+function saveToGoogleDrive() {
+  showToast('Google Drive integration requires setup');
+}
+
+function showToast(message) {
+  const toast = document.getElementById('toast');
+  toast.textContent = message;
+  toast.style.display = 'block';
+  setTimeout(() => { toast.style.display = 'none'; }, 3000);
+}
+
+// Track input changes
+document.querySelectorAll('[data-export]').forEach(field => {
+  field.addEventListener('change', updateProgress);
+  field.addEventListener('input', updateProgress);
+});
+
+// Set today's date in session date field
+document.getElementById('session_date').valueAsDate = new Date();
+
+// Initial progress update
+updateProgress();
+
+function gapiLoaded() {
+  // Google API loaded
+}
+
+function gisLoaded() {
+  // Google Identity Services loaded
+}
+</script>
+</body>
+</html>
