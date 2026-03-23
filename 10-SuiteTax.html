@@ -622,106 +622,73 @@ body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background
 <div class="btn-bar">
   <button class="btn btn-secondary" onclick="clearForm()">Clear Form</button>
   <button class="btn btn-primary" onclick="exportToExcel()">Export to Excel</button>
-  <button class="btn btn-drive" id="driveBtn" onclick="saveToGoogleDrive()">
-    <span class="drive-icon">📁</span> Save to Google Drive
-  </button>
+  <button class="btn btn-drive" id="btnDrive" onclick="saveToDrive()" disabled title="Loading Google Drive..."><span class="drive-icon">📁</span> Save to Google Drive</button>
 </div>
 
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast">Exported successfully!</div>
 
 <script>
-const TOTAL_FIELDS = document.querySelectorAll('[data-export]').length;
-
+// Track progress
 function updateProgress() {
-  let filledCount = 0;
-  document.querySelectorAll('[data-export]').forEach(field => {
-    if (field.type === 'checkbox' || field.type === 'radio') {
-      if (field.checked) filledCount++;
-    } else if (field.value && field.value.trim()) {
-      filledCount++;
-    }
-  });
+  const fields = document.querySelectorAll('input[type="text"], input[type="number"], input[type="date"], select, textarea');
+  const radios = {};
+  document.querySelectorAll('input[type="radio"]').forEach(r => { if(r.checked) radios[r.name] = true; });
+  const checkboxes = {};
+  document.querySelectorAll('input[type="checkbox"]').forEach(c => { if(c.checked) checkboxes[c.closest('.field')?.querySelector('label')?.textContent || 'x'] = true; });
+  let filled = 0, total = 0;
+  fields.forEach(f => { total++; if(f.value.trim()) filled++; });
+  const radioGroups = new Set();
+  document.querySelectorAll('input[type="radio"]').forEach(r => radioGroups.add(r.name));
+  total += radioGroups.size;
+  filled += Object.keys(radios).length;
+  const pct = total > 0 ? Math.round((filled / total) * 100) : 0;
+  document.getElementById('progressPct').textContent = pct + '%';
+  document.getElementById('progressFill').style.width = pct + '%';
+}
+document.addEventListener('input', updateProgress);
+document.addEventListener('change', updateProgress);
 
-  const percent = Math.round((filledCount / TOTAL_FIELDS) * 100);
-  document.getElementById('progress-fill').style.width = percent + '%';
-  document.getElementById('progress-percent').textContent = percent;
+function exportToExcel() {
+  const data = [];
+  const sections = document.querySelectorAll('.section, .meta-section');
+  sections.forEach(section => {
+    const sectionTitle = section.querySelector('h2')?.textContent || '';
+    const fields = section.querySelectorAll('.field');
+    fields.forEach(field => {
+      const label = field.querySelector('label')?.textContent?.replace(' *', '') || '';
+      let value = '';
+      const input = field.querySelector('input[type="text"], input[type="number"], input[type="date"], select, textarea');
+      if (input) { value = input.value; }
+      const checkedRadio = field.querySelector('input[type="radio"]:checked');
+      if (checkedRadio) { value = checkedRadio.value; }
+      const checkedBoxes = field.querySelectorAll('input[type="checkbox"]:checked');
+      if (checkedBoxes.length > 0) { value = Array.from(checkedBoxes).map(c => c.value).join(', '); }
+      data.push({ 'Section': sectionTitle, 'Question': label, 'Response': value });
+    });
+  });
+  const ws = XLSX.utils.json_to_sheet(data);
+  ws['!cols'] = [{ wch: 30 }, { wch: 60 }, { wch: 60 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'SuiteTax');
+  const clientName = document.querySelector('[data-export="Client Name"]')?.value || 'Client';
+  const date = new Date().toISOString().split('T')[0];
+  XLSX.writeFile(wb, `${clientName}_SuiteTax_${date}.xlsx`);
+  showToast();
 }
 
 function clearForm() {
-  if (confirm('Are you sure you want to clear all form data? This cannot be undone.')) {
-    document.querySelectorAll('[data-export]').forEach(field => {
-      if (field.type === 'checkbox' || field.type === 'radio') {
-        field.checked = false;
-      } else {
-        field.value = '';
-      }
-    });
+  if (confirm('Are you sure you want to clear all fields?')) {
+    document.querySelectorAll('input[type="text"], input[type="number"], input[type="date"], textarea').forEach(f => f.value = '');
+    document.querySelectorAll('select').forEach(s => s.selectedIndex = 0);
+    document.querySelectorAll('input[type="radio"], input[type="checkbox"]').forEach(c => c.checked = false);
     updateProgress();
-    showToast('Form cleared');
   }
 }
 
-function exportToExcel() {
-  const wb = XLSX.utils.book_new();
-  const data = [];
-
-  // Header row
-  data.push(['Field', 'Value']);
-
-  // Collect all fields
-  document.querySelectorAll('[data-export]').forEach(field => {
-    const label = field.getAttribute('data-export');
-    let value = '';
-
-    if (field.type === 'checkbox' || field.type === 'radio') {
-      if (field.checked) value = field.value;
-    } else {
-      value = field.value;
-    }
-
-    if (value) {
-      data.push([label, value]);
-    }
-  });
-
-  const ws = XLSX.utils.aoa_to_sheet(data);
-  ws['!cols'] = [{wch: 30}, {wch: 50}];
-  XLSX.utils.book_append_sheet(wb, ws, 'SuiteTax');
-
-  const fileName = `SuiteTax_${new Date().toISOString().split('T')[0]}.xlsx`;
-  XLSX.writeFile(wb, fileName);
-  showToast('Exported to Excel');
-}
-
-function saveToGoogleDrive() {
-  showToast('Google Drive integration requires setup');
-}
-
-function showToast(message) {
-  const toast = document.getElementById('toast');
-  toast.textContent = message;
-  toast.style.display = 'block';
-  setTimeout(() => { toast.style.display = 'none'; }, 3000);
-}
-
-// Track input changes
-document.querySelectorAll('[data-export]').forEach(field => {
-  field.addEventListener('change', updateProgress);
-  field.addEventListener('input', updateProgress);
-});
-
-// Set today's date in session date field
-document.getElementById('session_date').valueAsDate = new Date();
-
-// Initial progress update
-updateProgress();
-
-function gapiLoaded() {
-  // Google API loaded
-}
-
-function gisLoaded() {
-  // Google Identity Services loaded
+function showToast() {
+  const t = document.getElementById('toast');
+  t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 2500);
 }
 </script>
 </body>
